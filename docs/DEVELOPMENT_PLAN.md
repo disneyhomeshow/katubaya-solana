@@ -216,6 +216,7 @@ Deliver:
   - `refuse_delivery`
 - Errors: `OrderError`
 - Events: order created, fee quoted/accepted/rejected, refused
+- Flow test `tests/flow_order.ts` through `accept_delivery_fee`
 
 ### M5 — Mandatory Transport + Completion (Guarantee)
 Deliver:
@@ -223,6 +224,7 @@ Deliver:
   - `mark_in_transit`
   - `complete_order` (release escrow: farmer payout + logistics payout)
 - Events: in transit, completed
+- Extend `tests/flow_order.ts` through `complete_order`
 
 ### M6 — Timeouts & Hardening
 Deliver:
@@ -314,11 +316,11 @@ Minimum coverage:
   - failures produce expected Anchor error codes
   - PDAs derive as expected
 
-### Flow tests (later)
-After M4/M5, add a small number of “flow tests” that orchestrate multiple instructions:
-- Confirm customer → publish offer → create order → quote fee → accept → in transit → complete
+### Flow test (M4)
+Lands together with `create_order` as `tests/flow_order.ts`, orchestrating:
+- Confirm customer → publish offer → create order → quote fee → accept
 
-(If repo policy forbids multi-instruction tests in a single file, keep them in the file for the “main” instruction of that flow.)
+M5 extends the same file through `mark_in_transit` → `complete_order`.
 
 ---
 

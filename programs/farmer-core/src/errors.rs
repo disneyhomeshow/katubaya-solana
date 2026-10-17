@@ -5,13 +5,13 @@ use anchor_lang::prelude::*;
 // ============================================================================
 // Errors are organized by entity (Customer, Farmer, Warehouse, Config, etc.)
 
-#[error_code]
+#[error_code(offset = 6100)]
 pub enum CustomerError {
     #[msg("Customer not found")]
     CustomerNotFound,
 }
 
-#[error_code]
+#[error_code(offset = 6000)]
 pub enum ConfigError {
     #[msg("Too many allowed mints provided")]
     TooManyAllowedMints,

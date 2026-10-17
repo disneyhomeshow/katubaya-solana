@@ -32,19 +32,20 @@ programs/farmer-core/src/
 - **Rules**:
   - Must declare all modules: `errors`, `instructions`, `states`
   - Each instruction function should be a thin wrapper that calls the implementation in `instructions/`
-  - Use full module paths for Context types: `Context<instructions::module_name::StructName>`
+  - `use crate::instructions::*;` at the top so Context types stay short: `Context<InitConfig>`
 - **Example**:
   ```rust
+  use crate::instructions::*;
+
   pub mod errors;
   pub mod instructions;
   pub mod states;
 
   #[program]
   pub mod farmer_core {
-      pub fn init_config(
-          ctx: Context<instructions::init_config::InitConfig>,
-          ...
-      ) -> Result<()> {
+      use super::*;
+
+      pub fn init_config(ctx: Context<InitConfig>, ...) -> Result<()> {
           instructions::init_config::init_config(ctx, ...)
       }
   }
@@ -57,6 +58,7 @@ programs/farmer-core/src/
   - All seed phrases must be defined as `pub const SEED_*: &[u8] = b"..."`
   - All account structs must use `#[account]` attribute
   - Account structs derive `InitSpace`; every `Vec`/`String` field carries `#[max_len(CONST)]`
+  - Order timeouts are three constants here, in seconds, one per waiting state: pending quote, quoted, pickup (`EXPIRY_PENDING_QUOTE_SECS`, `EXPIRY_QUOTED_SECS`, `EXPIRY_PICKUP_SECS`)
   - Use clear section comments to organize: `// ============================================================================`
 - **Structure**:
   ```rust
@@ -78,18 +80,19 @@ programs/farmer-core/src/
 - **Purpose**: All error enums organized by entity
 - **Rules**:
   - Errors are grouped by entity: `ConfigError`, `CustomerError`, `FarmerError`, `WarehouseError`, etc.
-  - Each enum must use `#[error_code]` attribute
+  - Each enum uses `#[error_code(offset = N)]` with a distinct `N` per enum (6000, 6100, 6200, ...). Without an offset every enum starts at 6000 and codes collide
+  - Every failure path returns a named variant: auth, state, bounds, arithmetic (`MathOverflow`), stock (`InsufficientStock`). Never an unchecked panic or a bare `?` on `Option`
   - Use descriptive error messages with `#[msg("...")]`
   - Keep related errors together
 - **Example**:
   ```rust
-  #[error_code]
+  #[error_code(offset = 6000)]
   pub enum ConfigError {
       #[msg("Program is currently paused")]
       ProgramPaused,
   }
   
-  #[error_code]
+  #[error_code(offset = 6100)]
   pub enum CustomerError {
       #[msg("Customer not found")]
       CustomerNotFound,
@@ -105,7 +108,7 @@ programs/farmer-core/src/
     1. `#[derive(Accounts)]` struct for the instruction
     2. Public function that implements the instruction logic
   - Use `crate::` imports for accessing states and errors
-  - Include comprehensive doc comments explaining the instruction
+  - One-line doc comment on the Accounts struct; constraints and named errors are the documentation, do not restate the fields
 - **Structure**:
   ```rust
   use anchor_lang::prelude::*;
@@ -173,20 +176,22 @@ programs/farmer-core/src/
 - Use descriptive names: `SEED_CONFIG`, `SEED_WAREHOUSE`, etc.
 - Reference seeds using the constants, never hardcode byte strings
 - Example: `seeds = [SEED_CONFIG]` not `seeds = [b"config"]`
+- Entity ids (`warehouse_id`, `offer_id`, `order_id`) are explicit `u64` instruction args, in seeds as `id.to_le_bytes().as_ref()`. No on-chain counters: the client picks the id, a duplicate fails at `init`
 
 ### Error Handling
 
-- Use `require!` macro for validation checks
+- Gates live in `#[account(...)]` constraints, not in the handler: `has_one = operator @ WarehouseError::UnauthorizedOperator`, `constraint = !config.paused @ ConfigError::ProgramPaused`
+- `require!` only for checks on instruction args (bounds, ranges) that a constraint cannot express
+- Amount and stock arithmetic always uses `checked_*` and maps `None` to a named error. No bare `+ - *` on `u64` amounts
 - Reference errors using full path: `crate::errors::ErrorEnum::Variant`
 - Provide clear, actionable error messages
-- Group related errors in the same enum
 
 ### Validation Rules
 
-- Always check program pause state: `require!(!config.paused, ConfigError::ProgramPaused)`
-- Validate account ownership and signers
-- Check account states before state transitions
-- Validate input bounds (string lengths, vector sizes, etc.)
+- Market instructions carry `constraint = !config.paused @ ConfigError::ProgramPaused` on the `config` account
+- Signers and relationships via `has_one` / `constraint`; status transitions via `constraint = order.status == OrderStatus::X @ OrderError::InvalidStatus`
+- Mint allowlist is enforced once, in `publish_offer`: `config.allowed_mints.is_empty() || config.allowed_mints.contains(&mint)`. `create_order` trusts `offer.mint`
+- Validate input bounds (string lengths, vector sizes, etc.) with `require!`
 
 ### Security Best Practices
 
@@ -201,37 +206,23 @@ programs/farmer-core/src/
 
 ### Test Structure
 
-- **One test file per instruction**: `tests/instruction_name.ts`
-- **Test file naming**: Match instruction name (snake_case)
-- **Test organization**: Group related tests using `describe()` blocks
-- **Test naming**: Use descriptive names: `it("should initialize config with valid parameters")`
+- **One test file per instruction**: `tests/instruction_name.ts`, one `describe`, a `before` that builds the fixtures, one `it` per behavior
+- **`ProgramConfig` is a singleton**: only `tests/init_config.ts` calls `init_config`; every other file fetches the existing config
+- **Fixtures use fresh keypairs and ids** per file so files never collide on PDAs
+- **Account resolution**: let Anchor resolve PDAs, the provider wallet and programs from the IDL; pass only what it cannot derive (`.accountsPartial` to override a signer)
+- **Flow test**: lands together with `create_order` (M4) as `tests/flow_order.ts`: confirm_customer → publish_offer → create_order → quote_delivery_fee → accept_delivery_fee; M5 extends it through mark_in_transit → complete_order
 
 ### Test Coverage Requirements
 
-Each instruction test file must cover:
+Each instruction test file covers, one `it` each:
 
-1. **Success Cases**:
-   - Happy path with valid parameters
-   - Different valid parameter combinations
-   - Edge cases within valid ranges (empty vectors, max values, etc.)
+1. Happy path, then assert every stored field
+2. Each authorization failure (wrong signer, missing signer)
+3. Each named error the handler can return, triggered once
+4. Each illegal state transition, if the instruction checks a status
+5. Event emission, if the instruction emits one
 
-2. **Error Cases**:
-   - Validation failures (invalid inputs, out of bounds)
-   - Authorization failures (wrong signer, unauthorized access)
-   - State errors (already initialized, invalid state transitions)
-   - Business logic errors (insufficient funds, invalid relationships)
-
-3. **State Verification**:
-   - Verify account data after successful execution
-   - Verify account state changes
-   - Verify PDA derivation correctness
-   - Verify event emission (if applicable)
-
-4. **Edge Cases**:
-   - Boundary conditions (min/max values)
-   - Empty vectors/strings
-   - Zero values where applicable
-   - Maximum allowed values
+Skip: parameter permutations that hit the same branch, inputs that cannot reach the program (args larger than a transaction), and tests that only re-run the harness (re-deriving a PDA and comparing it with itself).
 
 ### Test Example Structure
 
@@ -240,36 +231,42 @@ import * as anchor from "@coral-xyz/anchor";
 import { Program } from "@coral-xyz/anchor";
 import { FarmerCore } from "../target/types/farmer_core";
 import { expect } from "chai";
-import { PublicKey } from "@solana/web3.js";
 
 describe("init_config", () => {
   const provider = anchor.AnchorProvider.env();
   anchor.setProvider(provider);
   const program = anchor.workspace.farmerCore as Program<FarmerCore>;
+  const { PublicKey, Keypair } = anchor.web3;
 
-  describe("success cases", () => {
-    it("should initialize config with valid parameters", async () => {
-      // Test implementation
-    });
+  const [configPDA] = PublicKey.findProgramAddressSync(
+    [Buffer.from("config")],
+    program.programId
+  );
+  const logisticsWallet = Keypair.generate().publicKey;
+
+  before(async () => {
+    await program.methods.initConfig(logisticsWallet, false, []).rpc();
   });
 
-  describe("error cases", () => {
-    it("should fail with too many allowed mints", async () => {
-      // Test implementation
-    });
+  it("persists every field", async () => {
+    const config = await program.account.programConfig.fetch(configPDA);
+    expect(config.logisticsWallet.equals(logisticsWallet)).to.be.true;
   });
 
-  describe("edge cases", () => {
-    it("should handle empty allowed_mints vector", async () => {
-      // Test implementation
-    });
+  it("rejects an admin that did not sign", async () => {
+    const err = await program.methods
+      .initConfig(logisticsWallet, false, [])
+      .accountsPartial({ admin: Keypair.generate().publicKey })
+      .rpc()
+      .catch((e) => e);
+    expect(String(err)).to.match(/signature/i);
   });
 });
 ```
 
 ## Documentation Standards
 
-- All public functions must have doc comments
+- One-line doc comment per instruction; constraints and named errors carry the detail
 - Document account constraints in `#[derive(Accounts)]` structs
 - Explain business logic in instruction implementations
 - Use `msg!` for important state changes in production code
@@ -290,42 +287,61 @@ describe("init_config", () => {
 
 ## Common Patterns
 
-### Initializing PDAs
+### Initializing PDAs (explicit ids, no counters)
+```rust
+#[derive(Accounts)]
+#[instruction(warehouse_id: u64)]
+pub struct CreateWarehouse<'info> {
+    #[account(
+        init,
+        payer = payer,
+        space = 8 + Warehouse::INIT_SPACE,
+        seeds = [SEED_WAREHOUSE, warehouse_id.to_le_bytes().as_ref()],
+        bump
+    )]
+    pub warehouse: Account<'info, Warehouse>,
+    // ...
+}
+```
+
+### Gates as constraints
 ```rust
 #[account(
-    init,
-    payer = payer,
-    space = 8 + AccountStruct::INIT_SPACE,
-    seeds = [SEED_ACCOUNT, ...],
-    bump
+    seeds = [SEED_CONFIG], bump,
+    constraint = !config.paused @ ConfigError::ProgramPaused,
 )]
-pub account: Account<'info, AccountStruct>,
+pub config: Account<'info, ProgramConfig>,
+
+#[account(has_one = operator @ WarehouseError::UnauthorizedOperator)]
+pub warehouse: Account<'info, Warehouse>,
+pub operator: Signer<'info>,
+
+#[account(constraint = order.status == OrderStatus::DeliveryQuoted @ OrderError::InvalidStatus)]
+pub order: Account<'info, Order>,
 ```
 
-### Validating Signers
+### Checked arithmetic, named errors
 ```rust
-require!(
-    ctx.accounts.signer.key() == expected_authority,
-    ErrorType::Unauthorized
-);
-```
+let subtotal = qty
+    .checked_mul(offer.price_minor)
+    .ok_or(OrderError::MathOverflow)?;
 
-### Checking Program State
-```rust
-require!(!ctx.accounts.config.paused, ConfigError::ProgramPaused);
-```
-
-### Stock Management
-```rust
 // Reserve stock
-require!(
-    offer.qty_remaining >= qty,
-    OfferError::InsufficientStock
-);
-offer.qty_remaining -= qty;
+offer.qty_remaining = offer
+    .qty_remaining
+    .checked_sub(qty)
+    .ok_or(OfferError::InsufficientStock)?;
 
-// Restore stock on cancellation
-offer.qty_remaining += order.qty;
+// Restore stock on cancel / reject / refuse / expire
+offer.qty_remaining = offer
+    .qty_remaining
+    .checked_add(order.qty)
+    .ok_or(OrderError::MathOverflow)?;
+```
+
+### Timeouts
+```rust
+order.expires_at = Clock::get()?.unix_timestamp + EXPIRY_PENDING_QUOTE_SECS;
 ```
 
 ## Entity Relationships
@@ -346,14 +362,14 @@ Orders follow strict state transitions:
 - Pickup: `ESCROWED_PICKUP` → `IN_TRANSIT` → `FULFILLED`
 - Delivery: `PENDING_DELIVERY_QUOTE` → `DELIVERY_QUOTED` → `ESCROWED_READY` → `IN_TRANSIT` → `FULFILLED`
 
-Always validate current state before allowing transitions.
+Transitions are enforced with `constraint = order.status == OrderStatus::X @ OrderError::InvalidStatus` on the order account; `FULFILLED` only from `IN_TRANSIT`.
 
 ## Integration Points
 
 - Events are emitted for Farmer Core synchronization
 - Off-chain components handle customer address collection
 - Indexers consume events for DApp frontends
-- Token transfers use SPL Token Program (support Token-2022 via `anchor_spl::token_interface`)
+- Token transfers use `anchor_spl::token_interface` (`InterfaceAccount<TokenAccount>`, `Interface<TokenInterface>`, `transfer_checked`) so SPL Token and Token-2022 both work; the escrow token account's authority is the PDA `[SEED_ESCROW, order]`
 
 ## Common Errors and Solutions
 
@@ -406,7 +422,7 @@ anchor build
 
 #### Account Size Mismatch
 
-**Error**: `AnchorError caused by account: <account>. Error Code: AccountNotEnoughKeys. Error Number: 3001`
+**Error**: `AnchorError caused by account: <account>. Error Code: AccountDidNotSerialize. Error Number: 3004`
 
 **Solution**: 
 1. Verify every `Vec`/`String` field in `states.rs` has `#[max_len(...)]`
