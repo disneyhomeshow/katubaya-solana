@@ -1,18 +1,15 @@
 use anchor_lang::prelude::*;
 
 // ============================================================================
-// ERROR ENUMS
+// ERRORS
 // ============================================================================
-// Errors are organized by entity (Customer, Farmer, Warehouse, Config, etc.)
+// Single enum on purpose: Anchor 0.32 writes only one `#[error_code]` enum into
+// the IDL and ignores custom offsets, so a second enum loses its names
+// client-side. Group variants by entity with a section comment.
 
-#[error_code(offset = 6100)]
-pub enum CustomerError {
-    #[msg("Customer not found")]
-    CustomerNotFound,
-}
-
-#[error_code(offset = 6000)]
-pub enum ConfigError {
+#[error_code]
+pub enum FarmerCoreError {
+    // ---- Config
     #[msg("Too many allowed mints provided")]
     TooManyAllowedMints,
     #[msg("Program is currently paused")]
@@ -21,4 +18,8 @@ pub enum ConfigError {
     UnauthorizedAdmin,
     #[msg("Mint not in allowed list")]
     MintNotAllowed,
+
+    // ---- Customer
+    #[msg("Customer not found")]
+    CustomerNotFound,
 }

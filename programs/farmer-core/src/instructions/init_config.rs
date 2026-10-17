@@ -31,7 +31,7 @@ pub fn init_config(
     // Validate allowed_mints length
     require!(
         allowed_mints.len() <= MAX_ALLOWED_MINTS,
-        crate::errors::ConfigError::TooManyAllowedMints
+        crate::errors::FarmerCoreError::TooManyAllowedMints
     );
     
     // Set config fields

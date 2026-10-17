@@ -98,16 +98,15 @@ Farmers may publish a pointer to encrypted katubaya export data:
 ### 5.3 FarmerProfile (PDA)
 **Seeds:** `["farmer", farmer_pubkey]`
 - `authority: Pubkey` (farmer signer)
-- `warehouse: Pubkey` (Warehouse)
+- `warehouse: Pubkey` (Warehouse requested at registration)
+- `warehouse_approved: bool` (set by the warehouse operator; required to publish offers)
 - `display_name: String` (bounded)
 - `public_profile_uri: String` (bounded)
-- `offer_counter: u64` (for deterministic offer IDs)
 
 ### 5.4 CustomerProfile (PDA)
 **Seeds:** `["customer", customer_pubkey]`
 - `authority: Pubkey`
 - `public_profile_uri: Option<String>` (bounded; optional)
-- `order_counter: u64`
 
 ### 5.5 WarehouseCustomer (PDA) **(Key to customer privacy + eligibility)**
 **Seeds:** `["wcustomer", warehouse_pubkey, customer_pubkey]`
@@ -232,9 +231,12 @@ Order fields:
 - `update_warehouse(...)` (fees, notes, operator, prefixes)
 
 ### 8.2 Farmer onboarding
-- `register_farmer(display_name, public_profile_uri)`
-- `set_farmer_warehouse(warehouse_pubkey)`
-  - recommended: require both farmer signer + warehouse.operator signer OR a 2-step request/approve flow
+- `register_farmer(warehouse, display_name, public_profile_uri)`
+  - signer: farmer
+  - creates `FarmerProfile` with `warehouse` set and `warehouse_approved = false` (the request)
+- `set_farmer_warehouse()`
+  - signer: `warehouse.operator` of `farmer.warehouse`
+  - sets `warehouse_approved = true` (the approval)
 
 ### 8.3 Customer onboarding + confirmation
 - `register_customer(public_profile_uri?)`
@@ -256,7 +258,8 @@ Order fields:
 ### 8.4 Publishing offers (transparent market)
 - `publish_offer(offer_id, crop_name, cultivar_name?, unit_code, qty, price_minor, mint, expires_at?, notes_public?, pack_ref?)`
   - signer: farmer
-  - must have farmer.warehouse set
+  - requires `farmer.warehouse_approved`
+  - mint allowed if `config.allowed_mints` is non-empty (checked here, once; orders trust `offer.mint`)
 - `deactivate_offer(offer_id)` (stop purchases)
 - optional:
   - `update_offer_price(offer_id, new_price_minor)`
@@ -264,13 +267,12 @@ Order fields:
 
 ### 8.5 Creating orders (escrow)
 **Create order**
-- `create_order(offer, qty, mode)`
+- `create_order(order_id, offer, qty, mode)`
   - signer: customer
   - checks:
     - program not paused
     - offer active and qty available
     - **WarehouseCustomer confirmed** for (offer.warehouse, customer)
-    - mint allowed (if allowlist enabled)
   - reserve stock immediately:
     - `offer.qty_remaining -= qty`
   - escrow subtotal:
@@ -411,7 +413,7 @@ Clients must convert UI quantities ↔ on-chain integers deterministically.
 
 ### Must-have checks
 - Program pause gate (`config.paused`)
-- Mint allowlist (optional but recommended for MVP)
+- Mint allowlist enforced once at `publish_offer`
 - Offer active and sufficient quantity
 - WarehouseCustomer CONFIRMED before order creation
 - Delivery quote/acceptance states enforced exactly

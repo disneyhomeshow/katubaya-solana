@@ -106,6 +106,7 @@ For each instruction:
    - keep tests green
    - ensure code remains consistent with repo conventions
 7. **Update docs**
+   - update `LLM/instructions/<name>/` (AGENTS.md, Feature Documentation Convention)
    - update README if behavior changed
 
 ---
@@ -128,7 +129,7 @@ programs/farmer-core/src/
 - `lib.rs` is thin wrappers calling `instructions::*`
 - All constants + seeds in `states.rs`
 - All accounts in `states.rs` derive `InitSpace`
-- Errors grouped by entity in `errors.rs`
+- One `FarmerCoreError` enum in `errors.rs`, sections per entity
 - One instruction per file in `instructions/`
 - `instructions/mod.rs` lists modules in alphabetical order
 
@@ -159,7 +160,7 @@ A feature/instruction is “done” when:
   - derive `InitSpace` with every variable-size field bounded
   - use bounded strings/vectors
 - ✅ Errors:
-  - added to correct enum
+  - added to `FarmerCoreError` under the entity section
   - have clear messages
 - ✅ Security checks present:
   - authority checks
@@ -167,7 +168,7 @@ A feature/instruction is “done” when:
   - correct state transition checks
   - stock reserve/restore correctness
   - token transfer correctness
-- ✅ Docs updated: README if behavior changed
+- ✅ Docs updated: `LLM/instructions/<name>/`, and README if behavior changed
 
 ---
 
@@ -182,9 +183,9 @@ Deliver:
 - Instructions:
   - `create_warehouse`
   - `register_farmer`
-  - `set_farmer_warehouse` (or request/approve)
+  - `set_farmer_warehouse` (operator approves the warehouse requested in `register_farmer`)
   - `register_customer`
-- Errors: `WarehouseError`, `FarmerError`
+- Errors: warehouse and farmer sections in `FarmerCoreError`
 
 ### M2 — Customer Confirmation Flow (Privacy Gate)
 Deliver:
@@ -201,7 +202,7 @@ Deliver:
 - Instructions:
   - `publish_offer`
   - `deactivate_offer`
-- Errors: `OfferError`
+- Errors: offer section in `FarmerCoreError`
 - Events: offer published/deactivated
 
 ### M4 — Orders (Escrow + Quote/Approve)
@@ -214,7 +215,7 @@ Deliver:
   - `accept_delivery_fee`
   - `reject_delivery_fee`
   - `refuse_delivery`
-- Errors: `OrderError`
+- Errors: order section in `FarmerCoreError`
 - Events: order created, fee quoted/accepted/rejected, refused
 - Flow test `tests/flow_order.ts` through `accept_delivery_fee`
 
@@ -274,6 +275,7 @@ Minimum coverage:
 ### D) Final checks
 - [ ] `anchor test` passes
 - [ ] `rustfmt` clean
+- [ ] `LLM/instructions/<name>/` updated
 - [ ] Any behavior changes reflected in README
 
 ---
@@ -382,11 +384,11 @@ Copy into an issue/PR description:
 - [ ] Tests added first and are comprehensive
 - [ ] New accounts derive `InitSpace` with every variable-size field bounded
 - [ ] Seeds use constants from `states.rs`
-- [ ] Errors grouped correctly
+- [ ] Errors added under the right section of `FarmerCoreError`
 - [ ] Instruction file is standalone and documented
 - [ ] `instructions/mod.rs` updated alphabetically
 - [ ] `lib.rs` wrapper added
-- [ ] Docs updated (README, if behavior changed)
+- [ ] Docs updated (`LLM/instructions/<name>/`; README if behavior changed)
 
 ### 14.3 “AI Request” Prompt Template (for engineers)
 When asking AI for work, include:

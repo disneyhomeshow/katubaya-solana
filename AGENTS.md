@@ -19,7 +19,7 @@ Farmer Core Solana Bridge is a Solana program (Rust + Anchor) that enables trans
 programs/farmer-core/src/
 ├── lib.rs              # Main program entry point, declares all instructions
 ├── states.rs            # All account structs, constants, and seed phrases
-├── errors.rs            # All error enums organized by entity
+├── errors.rs            # FarmerCoreError: one enum, sections per entity
 └── instructions/       # Individual instruction files
     ├── mod.rs          # Module declarations
     └── *.rs           # One file per instruction
@@ -77,25 +77,24 @@ programs/farmer-core/src/
   ```
 
 #### `errors.rs`
-- **Purpose**: All error enums organized by entity
+- **Purpose**: the single `#[error_code] pub enum FarmerCoreError`
 - **Rules**:
-  - Errors are grouped by entity: `ConfigError`, `CustomerError`, `FarmerError`, `WarehouseError`, etc.
-  - Each enum uses `#[error_code(offset = N)]` with a distinct `N` per enum (6000, 6100, 6200, ...). Without an offset every enum starts at 6000 and codes collide
+  - One enum only. Anchor 0.32 writes just one `#[error_code]` enum into the IDL (`anchor-lang-idl` overwrites the errors section per enum) and ignores `offset`, so a second enum loses its names client-side
+  - Group variants by entity with a section comment: `// ---- Config`, `// ---- Warehouse`, `// ---- Order`, ...
   - Every failure path returns a named variant: auth, state, bounds, arithmetic (`MathOverflow`), stock (`InsufficientStock`). Never an unchecked panic or a bare `?` on `Option`
+  - Reuse generic variants across entities (`NameTooLong`, `UriTooLong`, `MathOverflow`) instead of one per struct
   - Use descriptive error messages with `#[msg("...")]`
-  - Keep related errors together
 - **Example**:
   ```rust
-  #[error_code(offset = 6000)]
-  pub enum ConfigError {
+  #[error_code]
+  pub enum FarmerCoreError {
+      // ---- Config
       #[msg("Program is currently paused")]
       ProgramPaused,
-  }
-  
-  #[error_code(offset = 6100)]
-  pub enum CustomerError {
-      #[msg("Customer not found")]
-      CustomerNotFound,
+
+      // ---- Warehouse
+      #[msg("Signer is not the warehouse operator")]
+      UnauthorizedOperator,
   }
   ```
 
@@ -155,12 +154,12 @@ programs/farmer-core/src/
 
 1. **Write tests first**: Create `tests/instruction_name.ts` with all test cases
 2. **Add state**: If needed, add account structs to `states.rs`
-3. **Add errors**: If needed, add error variants to appropriate enum in `errors.rs`
+3. **Add errors**: If needed, add variants to `FarmerCoreError` under the entity section
 4. **Create instruction file**: Add `instructions/new_instruction.rs`
 5. **Declare module**: Add `pub mod new_instruction;` to `instructions/mod.rs`
 6. **Add to lib.rs**: Add the instruction function to the `#[program]` module
 7. **Run tests**: Ensure all tests pass
-8. **Update docs**: Update `README.md` if behavior changed
+8. **Update docs**: `LLM/instructions/<name>/` (see Feature Documentation Convention) and `README.md` if behavior changed
 
 > **See also**: `docs/DEVELOPMENT_PLAN.md` section 9 for detailed instruction-by-instruction checklist
 
@@ -180,16 +179,16 @@ programs/farmer-core/src/
 
 ### Error Handling
 
-- Gates live in `#[account(...)]` constraints, not in the handler: `has_one = operator @ WarehouseError::UnauthorizedOperator`, `constraint = !config.paused @ ConfigError::ProgramPaused`
+- Gates live in `#[account(...)]` constraints, not in the handler: `has_one = operator @ FarmerCoreError::UnauthorizedOperator`, `constraint = !config.paused @ FarmerCoreError::ProgramPaused`
 - `require!` only for checks on instruction args (bounds, ranges) that a constraint cannot express
 - Amount and stock arithmetic always uses `checked_*` and maps `None` to a named error. No bare `+ - *` on `u64` amounts
-- Reference errors using full path: `crate::errors::ErrorEnum::Variant`
+- `use crate::errors::FarmerCoreError;` once per file, then `FarmerCoreError::Variant`
 - Provide clear, actionable error messages
 
 ### Validation Rules
 
-- Market instructions carry `constraint = !config.paused @ ConfigError::ProgramPaused` on the `config` account
-- Signers and relationships via `has_one` / `constraint`; status transitions via `constraint = order.status == OrderStatus::X @ OrderError::InvalidStatus`
+- Market instructions carry `constraint = !config.paused @ FarmerCoreError::ProgramPaused` on the `config` account
+- Signers and relationships via `has_one` / `constraint`; status transitions via `constraint = order.status == OrderStatus::X @ FarmerCoreError::InvalidStatus`
 - Mint allowlist is enforced once, in `publish_offer`: `config.allowed_mints.is_empty() || config.allowed_mints.contains(&mint)`. `create_order` trusts `offer.mint`
 - Validate input bounds (string lengths, vector sizes, etc.) with `require!`
 
@@ -273,6 +272,28 @@ describe("init_config", () => {
 - Keep documentation updated:
   - `README.md`: Product requirements and architecture changes
   - `docs/DEVELOPMENT_PLAN.md`: Roadmap and milestone updates
+  - `LLM/instructions/<name>/`: behavior, technical reference and change log per instruction (convention below)
+
+### Feature Documentation Convention
+
+- Every instruction has docs under `LLM/instructions/<instruction_name>/`.
+- Expected docs: `HOW_IT_WORKS.md`, `IMPLEMENTATION_INSTRUCTIONS.md`, and `IMPLEMENTATION_SUMMARY.md` or equivalent.
+- When implementing or changing an instruction, update its docs so behavior and technical decisions stay in sync with code.
+
+#### Required Documents per Instruction
+
+| Document | Purpose | What It Contains |
+|----------|---------|-----------------|
+| `HOW_IT_WORKS.md` | **End-to-end behavior** — read this first to understand the feature | Purpose and user-facing behavior. Mermaid sequence diagrams showing the full request lifecycle. Component list with route table, service methods, and data flow. Data model overview and key relationships. Key design decisions explaining *why* things work the way they do. References to all related source files. |
+| `IMPLEMENTATION_INSTRUCTIONS.md` | **Technical reference** — read this when implementing or debugging | File map (every file involved and its role). Full data model definitions with TypeScript snippets. Service class detail (constructor, every method signature, parameters, return types). API contracts for each endpoint (HTTP method, path, body schema, response shape). Implementation notes covering edge cases, casting, error handling, and non-obvious patterns. |
+| `IMPLEMENTATION_SUMMARY.md` | **Change log & decisions** — read this to understand what was built and why | List of all files created or modified, grouped by layer (common types, shared services, API controllers, routes, docs). Key architectural decisions with rationale. Operational prerequisites (indexes, secrets, config, permissions). |
+
+#### Mapping to this program
+
+- endpoint = instruction (signers, accounts, args, errors, events); route table = instruction table
+- service method = handler in `instructions/<name>.rs`; data model = account struct in `states.rs` plus the generated IDL type
+- operational prerequisites = seeds, rent, mints, required signers, config flags
+- one folder per instruction, named after it: `LLM/instructions/register_farmer/`
 
 ## Code Style
 
@@ -308,15 +329,15 @@ pub struct CreateWarehouse<'info> {
 ```rust
 #[account(
     seeds = [SEED_CONFIG], bump,
-    constraint = !config.paused @ ConfigError::ProgramPaused,
+    constraint = !config.paused @ FarmerCoreError::ProgramPaused,
 )]
 pub config: Account<'info, ProgramConfig>,
 
-#[account(has_one = operator @ WarehouseError::UnauthorizedOperator)]
+#[account(has_one = operator @ FarmerCoreError::UnauthorizedOperator)]
 pub warehouse: Account<'info, Warehouse>,
 pub operator: Signer<'info>,
 
-#[account(constraint = order.status == OrderStatus::DeliveryQuoted @ OrderError::InvalidStatus)]
+#[account(constraint = order.status == OrderStatus::DeliveryQuoted @ FarmerCoreError::InvalidStatus)]
 pub order: Account<'info, Order>,
 ```
 
@@ -324,19 +345,19 @@ pub order: Account<'info, Order>,
 ```rust
 let subtotal = qty
     .checked_mul(offer.price_minor)
-    .ok_or(OrderError::MathOverflow)?;
+    .ok_or(FarmerCoreError::MathOverflow)?;
 
 // Reserve stock
 offer.qty_remaining = offer
     .qty_remaining
     .checked_sub(qty)
-    .ok_or(OfferError::InsufficientStock)?;
+    .ok_or(FarmerCoreError::InsufficientStock)?;
 
 // Restore stock on cancel / reject / refuse / expire
 offer.qty_remaining = offer
     .qty_remaining
     .checked_add(order.qty)
-    .ok_or(OrderError::MathOverflow)?;
+    .ok_or(FarmerCoreError::MathOverflow)?;
 ```
 
 ### Timeouts
@@ -362,7 +383,7 @@ Orders follow strict state transitions:
 - Pickup: `ESCROWED_PICKUP` → `IN_TRANSIT` → `FULFILLED`
 - Delivery: `PENDING_DELIVERY_QUOTE` → `DELIVERY_QUOTED` → `ESCROWED_READY` → `IN_TRANSIT` → `FULFILLED`
 
-Transitions are enforced with `constraint = order.status == OrderStatus::X @ OrderError::InvalidStatus` on the order account; `FULFILLED` only from `IN_TRANSIT`.
+Transitions are enforced with `constraint = order.status == OrderStatus::X @ FarmerCoreError::InvalidStatus` on the order account; `FULFILLED` only from `IN_TRANSIT`.
 
 ## Integration Points
 
