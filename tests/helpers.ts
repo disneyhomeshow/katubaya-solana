@@ -92,3 +92,45 @@ export const events = async (builder: { rpc(opts?: anchor.web3.ConfirmOptions): 
   const parser = new anchor.EventParser(program.programId, program.coder);
   return [...parser.parseLogs(tx.meta.logMessages)].map((e) => ({ name: e.name, data: e.data }));
 };
+
+export const offerPDA = (farmer: anchor.web3.PublicKey, id: number) =>
+  pda(Buffer.from("offer"), farmer.toBuffer(), u64(id));
+
+/** Farmer registered for `warehouse` and approved by its `operator`. */
+export const approvedFarmer = async (warehouse: anchor.web3.PublicKey, operator: anchor.web3.Keypair) => {
+  const { farmer, profile } = await registerFarmer(warehouse);
+  await program.methods
+    .setFarmerWarehouse()
+    .accountsPartial({ farmerProfile: profile, warehouse, operator: operator.publicKey })
+    .signers([operator])
+    .rpc();
+  return farmer;
+};
+
+export const offerArgs = () => ({
+  crop: "Tomato",
+  cultivar: "San Marzano" as string | null,
+  unitCode: 2,
+  qty: new BN(500),
+  price: new BN(1_000_000),
+  mint: allowedMints[0],
+  expiresAt: new BN(Math.floor(Date.now() / 1000) + 86_400) as anchor.BN | null,
+  notes: "Harvested this week" as string | null,
+  packRef: null as anchor.web3.PublicKey | null,
+});
+
+export const publishOfferTx = (farmer: anchor.web3.Keypair, id: number, o: Partial<ReturnType<typeof offerArgs>> = {}) => {
+  const a = { ...offerArgs(), ...o };
+  return program.methods
+    .publishOffer(new BN(id), a.crop, a.cultivar, a.unitCode, a.qty, a.price, a.mint, a.expiresAt, a.notes, a.packRef)
+    .accountsPartial({ farmer: farmer.publicKey })
+    .signers([farmer]);
+};
+
+export const publishOffer = async (farmer: anchor.web3.Keypair, o: Partial<ReturnType<typeof offerArgs>> = {}, id = freshId()) => {
+  await publishOfferTx(farmer, id, o).rpc();
+  return offerPDA(farmer.publicKey, id);
+};
+
+/** Admin (provider wallet) flips config.paused. */
+export const setPaused = (paused: boolean) => program.methods.setPaused(paused).rpc();

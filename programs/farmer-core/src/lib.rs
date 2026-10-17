@@ -87,4 +87,43 @@ pub mod farmer_core {
     pub fn revoke_customer(ctx: Context<RevokeCustomer>) -> Result<()> {
         instructions::revoke_customer::revoke_customer(ctx)
     }
+
+    /// Approved farmer publishes a transparent lot offer keyed by an explicit id
+    pub fn publish_offer(
+        ctx: Context<PublishOffer>,
+        offer_id: u64,
+        crop_name: String,
+        cultivar_name: Option<String>,
+        unit_code: u16,
+        qty: u64,
+        price_minor: u64,
+        mint: Pubkey,
+        expires_at: Option<i64>,
+        notes_public: Option<String>,
+        pack_ref: Option<Pubkey>,
+    ) -> Result<()> {
+        instructions::publish_offer::publish_offer(
+            ctx,
+            offer_id,
+            crop_name,
+            cultivar_name,
+            unit_code,
+            qty,
+            price_minor,
+            mint,
+            expires_at,
+            notes_public,
+            pack_ref,
+        )
+    }
+
+    /// Farmer stops purchases on an offer
+    pub fn deactivate_offer(ctx: Context<DeactivateOffer>) -> Result<()> {
+        instructions::deactivate_offer::deactivate_offer(ctx)
+    }
+
+    /// Admin pauses or resumes market actions
+    pub fn set_paused(ctx: Context<SetPaused>, paused: bool) -> Result<()> {
+        instructions::set_paused::set_paused(ctx, paused)
+    }
 }

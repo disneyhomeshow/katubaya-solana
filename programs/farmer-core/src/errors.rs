@@ -48,4 +48,18 @@ pub enum FarmerCoreError {
     AlreadyConfirmed,
     #[msg("Customer is already revoked for this warehouse")]
     AlreadyRevoked,
+
+    // ---- Offer (new sections go last: existing codes never shift)
+    #[msg("Farmer is not approved by the warehouse")]
+    FarmerNotApproved,
+    #[msg("Signer is not the offer's farmer")]
+    UnauthorizedFarmer,
+    #[msg("Quantity must be greater than zero")]
+    InvalidQuantity,
+    #[msg("Price must be greater than zero")]
+    InvalidPrice,
+    #[msg("expires_at must be in the future")]
+    InvalidExpiry,
+    #[msg("Offer is not active")]
+    OfferInactive,
 }

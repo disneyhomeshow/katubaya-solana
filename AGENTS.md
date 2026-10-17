@@ -85,6 +85,7 @@ programs/farmer-core/src/
   - Group variants by entity with a section comment: `// ---- Config`, `// ---- Warehouse`, `// ---- Order`, ...
   - Every failure path returns a named variant: auth, state, bounds, arithmetic (`MathOverflow`), stock (`InsufficientStock`). Never an unchecked panic or a bare `?` on `Option`
   - Reuse generic variants across entities (`NameTooLong`, `UriTooLong`, `MathOverflow`) instead of one per struct
+  - Append new variants at the end of the enum, new sections last, so existing codes never shift (the docs quote codes)
   - Use descriptive error messages with `#[msg("...")]`
 - **Example**:
   ```rust
@@ -216,7 +217,7 @@ programs/farmer-core/src/
 
 - **One test file per instruction**: `tests/instruction_name.ts`, one `describe`, a `before` that builds the fixtures, one `it` per behavior
 - **`ProgramConfig` is a singleton**: the root `before` in `tests/helpers.ts` creates it once; no test file calls `init_config` for setup
-- **Shared helpers** in `tests/helpers.ts`: `program`, `provider`, PDA derivers (`configPDA`, `warehousePDA(id)`, `farmerPDA(pk)`, `customerPDA(pk)`), `fund()` (new keypair with airdropped SOL), `freshId()`, `fails(promise)` (resolves to the Anchor error code or the raw error string), fixtures `createWarehouse(operator)` / `registerFarmer(warehouse)` / `registerCustomer()` / `requestConfirmation(warehouse, customer)`, `wcustomerPDA(warehouse, customer)`, and `events(builder)` (sends with commitment `confirmed` and decodes the tx logs with `EventParser`)
+- **Shared helpers** in `tests/helpers.ts`: `program`, `provider`, PDA derivers, `fund()`, `freshId()`, `fails(promise)`, `events(builder)`, `setPaused(bool)`, and one fixture per entity (`createWarehouse`, `registerFarmer`, `approvedFarmer`, `registerCustomer`, `requestConfirmation`, `publishOffer` / `publishOfferTx`). The file is short; read it before adding a fixture
 - **Fixtures use fresh keypairs and ids** per file so files never collide on PDAs
 - **Account resolution**: let Anchor resolve PDAs, the provider wallet and programs from the IDL; pass only what it cannot derive (`.accountsPartial` to override a signer)
 - **Flow test**: lands together with `create_order` (M4) as `tests/flow_order.ts`: confirm_customer → publish_offer → create_order → quote_delivery_fee → accept_delivery_fee; M5 extends it through mark_in_transit → complete_order

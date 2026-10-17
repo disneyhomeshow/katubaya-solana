@@ -97,3 +97,25 @@ pub struct WarehouseCustomer {
     pub confirmed_at: Option<i64>,
     pub notes_hash: Option<[u8; 32]>, // hash of the off-chain record, never PII
 }
+
+#[account]
+#[derive(InitSpace)]
+pub struct LotOffer {
+    pub farmer: Pubkey, // farmer authority (wallet), also an offer seed
+    pub warehouse: Pubkey,
+    pub offer_id: u64,
+    pub pack_ref: Option<Pubkey>, // PackPointer (M7), stored unvalidated until then
+    #[max_len(MAX_NAME_LEN)]
+    pub crop_name: String,
+    #[max_len(MAX_NAME_LEN)]
+    pub cultivar_name: Option<String>,
+    pub unit_code: u16, // client-side mapping, README section 10
+    pub expires_at: Option<i64>,
+    #[max_len(MAX_NOTES_LEN)]
+    pub notes_public: Option<String>,
+    pub mint: Pubkey,
+    pub price_minor: u64,
+    pub qty_remaining: u64,
+    pub active: bool,
+    pub created_at: i64,
+}

@@ -227,6 +227,7 @@ Order fields:
 
 ### 8.1 Admin / Warehouse
 - `init_config(logistics_wallet, paused, allowed_mints?)`
+- `set_paused(paused)` (admin; the only writer of `config.paused`, which gates market instructions)
 - `create_warehouse(warehouse_id, operator, name, pickup_notes, fee_bps, deliver_zip_prefixes, delivery_fee_rules_uri?)`
 - `update_warehouse(...)` (fees, notes, operator, prefixes)
 

@@ -205,6 +205,7 @@ Deliver:
 - Instructions:
   - `publish_offer`
   - `deactivate_offer`
+  - `set_paused` (admin toggle; without it the pause gate could never be exercised)
 - Errors: offer section in `FarmerCoreError`
 - Events: offer published/deactivated
 
