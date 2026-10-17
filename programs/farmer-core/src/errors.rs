@@ -82,4 +82,10 @@ pub enum FarmerCoreError {
     InvalidOrderStatus,
     #[msg("Order is not a delivery order")]
     NotDeliveryOrder,
+
+    // ---- Payout
+    #[msg("Farmer token account is not owned by the order's farmer")]
+    FarmerTokenAccountMismatch,
+    #[msg("Logistics token account is not owned by config.logistics_wallet")]
+    LogisticsTokenAccountMismatch,
 }

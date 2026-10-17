@@ -160,4 +160,14 @@ pub mod farmer_core {
     pub fn refuse_delivery(ctx: Context<RefuseDelivery>) -> Result<()> {
         instructions::refuse_delivery::refuse_delivery(ctx)
     }
+
+    /// Warehouse operator locks the order for transport; mandatory before completion
+    pub fn mark_in_transit(ctx: Context<MarkInTransit>) -> Result<()> {
+        instructions::mark_in_transit::mark_in_transit(ctx)
+    }
+
+    /// Warehouse operator completes the order: escrow released to farmer and logistics
+    pub fn complete_order(ctx: Context<CompleteOrder>) -> Result<()> {
+        instructions::complete_order::complete_order(ctx)
+    }
 }

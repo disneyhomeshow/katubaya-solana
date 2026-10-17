@@ -59,9 +59,9 @@ before(async () => {
   await program.methods.initConfig(logisticsWallet, false, allowedMints).rpc();
 });
 
-export const createWarehouse = async (operator: anchor.web3.PublicKey, id = freshId()) => {
+export const createWarehouse = async (operator: anchor.web3.PublicKey, id = freshId(), feeBps = 250) => {
   await program.methods
-    .createWarehouse(new BN(id), operator, "Central", "Gate B", 250, [{ prefix: 123, len: 3 }], null)
+    .createWarehouse(new BN(id), operator, "Central", "Gate B", feeBps, [{ prefix: 123, len: 3 }], null)
     .rpc();
   return warehousePDA(id);
 };
@@ -231,3 +231,44 @@ export const SUBTOTAL = 10 * 1_000_000; // default order: qty 10 at price 1_000_
 export const SERVICE_FEE = (SUBTOTAL * 250) / 10_000; // warehouse fixture fee_bps = 250
 export const H6 = 6 * 60 * 60;
 export const H72 = 72 * 60 * 60;
+
+/** Token account of `owner` for the test mint (created if missing; `owner` may be any pubkey). */
+export const ataOf = async (owner: anchor.web3.PublicKey) =>
+  (await getOrCreateAssociatedTokenAccount(provider.connection, payer, testMint(), owner)).address;
+
+type Market = Awaited<ReturnType<typeof market>>;
+
+export const quoteFee = (order: anchor.web3.PublicKey, m: Market, fee = 500_000) =>
+  program.methods
+    .quoteDeliveryFee(new BN(fee))
+    .accountsPartial({ order, warehouse: m.warehouse, operator: m.operator.publicKey })
+    .signers([m.operator])
+    .rpc();
+
+export const acceptFee = (order: anchor.web3.PublicKey, m: Market) =>
+  program.methods
+    .acceptDeliveryFee()
+    .accountsPartial({
+      order,
+      mint: testMint(),
+      customerTokenAccount: m.buyer.ata,
+      customer: m.buyer.customer.publicKey,
+      tokenProgram: TOKEN_PROGRAM_ID,
+    })
+    .signers([m.buyer.customer])
+    .rpc();
+
+export const markInTransit = (order: anchor.web3.PublicKey, m: Market) =>
+  program.methods
+    .markInTransit()
+    .accountsPartial({ order, warehouse: m.warehouse, operator: m.operator.publicKey })
+    .signers([m.operator])
+    .rpc();
+
+/** Delivery order quoted and accepted: EscrowedReady. */
+export const readyOrder = async (m: Market, fee = 500_000) => {
+  const order = await createOrder(m.buyer, m.offer, m.warehouse, "delivery");
+  await quoteFee(order, m, fee);
+  await acceptFee(order, m);
+  return order;
+};

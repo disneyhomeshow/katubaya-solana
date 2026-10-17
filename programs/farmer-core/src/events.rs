@@ -73,3 +73,18 @@ pub struct DeliveryFeeRejected {
 pub struct OrderRefused {
     pub order: Pubkey,
 }
+
+#[event]
+pub struct OrderInTransit {
+    pub order: Pubkey,
+}
+
+#[event]
+pub struct OrderCompleted {
+    pub order: Pubkey,
+    pub subtotal_minor: u64,
+    pub service_fee_minor: u64,
+    pub delivery_fee_minor: u64,
+    pub farmer_payout: u64,
+    pub logistics_payout: u64,
+}

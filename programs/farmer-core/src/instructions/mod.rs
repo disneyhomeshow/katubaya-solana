@@ -1,9 +1,11 @@
 pub mod accept_delivery_fee;
+pub mod complete_order;
 pub mod confirm_customer;
 pub mod create_order;
 pub mod create_warehouse;
 pub mod deactivate_offer;
 pub mod init_config;
+pub mod mark_in_transit;
 pub mod publish_offer;
 pub mod quote_delivery_fee;
 pub mod refuse_delivery;
@@ -16,11 +18,13 @@ pub mod set_farmer_warehouse;
 pub mod set_paused;
 
 pub use accept_delivery_fee::*;
+pub use complete_order::*;
 pub use confirm_customer::*;
 pub use create_order::*;
 pub use create_warehouse::*;
 pub use deactivate_offer::*;
 pub use init_config::*;
+pub use mark_in_transit::*;
 pub use publish_offer::*;
 pub use quote_delivery_fee::*;
 pub use refuse_delivery::*;
