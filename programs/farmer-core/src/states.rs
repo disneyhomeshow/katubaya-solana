@@ -8,7 +8,8 @@ pub const MAX_NAME_LEN: usize = 100;
 pub const MAX_URI_LEN: usize = 200;
 pub const MAX_NOTES_LEN: usize = 500;
 pub const MAX_ZIP_PREFIXES: usize = 100;
-pub const MAX_ALLOWED_MINTS: usize = 30; // 30 * 32 B is the most that fits in one 1232 B tx
+pub const MAX_ALLOWED_MINTS: usize = 30; // round cap; a single 1232 B tx already fits at most 29 pubkeys
+pub const MAX_FEE_BPS: u16 = 10_000;
 
 // ============================================================================
 // SEED PHRASES
@@ -36,4 +37,46 @@ pub struct ProgramConfig {
     pub paused: bool,
     #[max_len(MAX_ALLOWED_MINTS)]
     pub allowed_mints: Vec<Pubkey>,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, InitSpace)]
+pub struct ZipPrefix {
+    pub prefix: u32,
+    pub len: u8, // 3, 4 or 5 digits
+}
+
+#[account]
+#[derive(InitSpace)]
+pub struct Warehouse {
+    pub warehouse_id: u64,
+    pub operator: Pubkey,
+    #[max_len(MAX_NAME_LEN)]
+    pub name: String,
+    #[max_len(MAX_NOTES_LEN)]
+    pub pickup_notes: String,
+    pub fee_bps: u16,
+    #[max_len(MAX_URI_LEN)]
+    pub delivery_fee_rules_uri: Option<String>,
+    #[max_len(MAX_ZIP_PREFIXES)]
+    pub deliver_zip_prefixes: Vec<ZipPrefix>,
+}
+
+#[account]
+#[derive(InitSpace)]
+pub struct FarmerProfile {
+    pub authority: Pubkey,
+    pub warehouse: Pubkey,
+    pub warehouse_approved: bool,
+    #[max_len(MAX_NAME_LEN)]
+    pub display_name: String,
+    #[max_len(MAX_URI_LEN)]
+    pub public_profile_uri: String,
+}
+
+#[account]
+#[derive(InitSpace)]
+pub struct CustomerProfile {
+    pub authority: Pubkey,
+    #[max_len(MAX_URI_LEN)]
+    pub public_profile_uri: Option<String>,
 }

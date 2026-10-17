@@ -206,7 +206,8 @@ programs/farmer-core/src/
 ### Test Structure
 
 - **One test file per instruction**: `tests/instruction_name.ts`, one `describe`, a `before` that builds the fixtures, one `it` per behavior
-- **`ProgramConfig` is a singleton**: only `tests/init_config.ts` calls `init_config`; every other file fetches the existing config
+- **`ProgramConfig` is a singleton**: the root `before` in `tests/helpers.ts` creates it once; no test file calls `init_config` for setup
+- **Shared helpers** in `tests/helpers.ts`: `program`, `provider`, PDA derivers (`configPDA`, `warehousePDA(id)`, `farmerPDA(pk)`, `customerPDA(pk)`), `fund()` (new keypair with airdropped SOL), `freshId()`, `fails(promise)` (resolves to the Anchor error code or the raw error string), and fixtures `createWarehouse(operator)` / `registerFarmer(warehouse)`
 - **Fixtures use fresh keypairs and ids** per file so files never collide on PDAs
 - **Account resolution**: let Anchor resolve PDAs, the provider wallet and programs from the IDL; pass only what it cannot derive (`.accountsPartial` to override a signer)
 - **Flow test**: lands together with `create_order` (M4) as `tests/flow_order.ts`: confirm_customer → publish_offer → create_order → quote_delivery_fee → accept_delivery_fee; M5 extends it through mark_in_transit → complete_order
