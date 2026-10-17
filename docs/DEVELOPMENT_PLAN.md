@@ -41,20 +41,9 @@ A Solana program that enables:
 
 ---
 
-## 3) Current Implementation State (Baseline)
+## 3) Current Implementation State
 
-As of the latest `docs/CURRENT_STATE.md`:
-
-✅ Implemented:
-- Repo structure: `lib.rs`, `states.rs`, `errors.rs`, `instructions/*`
-- TDD infrastructure with ts-mocha
-- `ProgramConfig` account + seeds/constants
-- `init_config` instruction + comprehensive test file `tests/init_config.ts`
-
-❌ Not yet implemented:
-- Warehouse, farmer/customer profiles, warehouse-customer relationship
-- Offers, orders, escrow token integration, events
-- Most error enums beyond ConfigError/CustomerError placeholder
+The code is the source of truth: `programs/farmer-core/src/` for what exists, `git log` for what changed, section 8 for what comes next.
 
 ---
 
@@ -73,7 +62,7 @@ As of the latest `docs/CURRENT_STATE.md`:
   - Anchor instruction implementations that satisfy tests
   - precise account sizing calculations and bounded constants
   - security checks and edge case coverage
-  - doc updates (README, CURRENT_STATE, changelog notes)
+  - doc updates (README, changelog notes)
 - Maintains consistency with repo guidelines.
 
 ### Communication protocol
@@ -108,7 +97,7 @@ For each instruction:
    - PDA derivation checks
 3. **Run tests (expect failure)**
 4. **Implement instruction**
-   - add/update state structs in `states.rs` (with `SIZE`)
+   - add/update state structs in `states.rs` (derive `InitSpace`)
    - add/update errors in `errors.rs`
    - implement instruction in `instructions/<name>.rs`
    - export wrapper in `lib.rs`
@@ -117,7 +106,6 @@ For each instruction:
    - keep tests green
    - ensure code remains consistent with repo conventions
 7. **Update docs**
-   - update `docs/CURRENT_STATE.md`
    - update README if behavior changed
 
 ---
@@ -139,19 +127,15 @@ programs/farmer-core/src/
 ### Key rules
 - `lib.rs` is thin wrappers calling `instructions::*`
 - All constants + seeds in `states.rs`
-- All accounts in `states.rs` with `SIZE` constants
+- All accounts in `states.rs` derive `InitSpace`
 - Errors grouped by entity in `errors.rs`
 - One instruction per file in `instructions/`
 - `instructions/mod.rs` lists modules in alphabetical order
 
 ### Account sizing
-- Always exact:
-  - discriminator `8`
-  - primitives (Pubkey=32, u64=8, i64=8, bool=1, u16=2, u8=1)
-  - Strings: `4 + MAX_LEN`
-  - Vec<T>: `4 + (T_SIZE * MAX_ITEMS)`
-  - Option<T>: `1 + T_SIZE` (Anchor borsh layout)
-- Use `#[account(space = StructName::SIZE)]`
+- Derive `InitSpace`; bound `Vec`/`String` with `#[max_len(CONST)]`
+- Use `#[account(space = 8 + StructName::INIT_SPACE)]`
+- What it computes (for review): discriminator `8`, Pubkey=32, u64/i64=8, bool=1, u16=2, u8=1, String `4 + MAX_LEN`, Vec<T> `4 + T_SIZE * MAX_ITEMS`, Option<T> `1 + T_SIZE`
 
 ### Seeds
 - No hardcoded `b"..."` in constraints; only constants:
@@ -172,7 +156,7 @@ A feature/instruction is “done” when:
   - state changes
 - ✅ All state structs:
   - are in `states.rs`
-  - have `SIZE` constants
+  - derive `InitSpace` with every variable-size field bounded
   - use bounded strings/vectors
 - ✅ Errors:
   - added to correct enum
@@ -183,8 +167,7 @@ A feature/instruction is “done” when:
   - correct state transition checks
   - stock reserve/restore correctness
   - token transfer correctness
-- ✅ Docs updated:
-  - `docs/CURRENT_STATE.md` updated with what changed
+- ✅ Docs updated: README if behavior changed
 
 ---
 
@@ -280,7 +263,7 @@ Minimum coverage:
 - [ ] event emission checks (if instruction emits events)
 
 ### C) Implementation
-- [ ] Add/update account struct(s) in `states.rs` + `SIZE`
+- [ ] Add/update account struct(s) in `states.rs` + `InitSpace`
 - [ ] Add/update error enums in `errors.rs`
 - [ ] Create `instructions/x.rs` with `#[derive(Accounts)]` + impl fn
 - [ ] Export in `instructions/mod.rs` (alphabetical)
@@ -289,7 +272,6 @@ Minimum coverage:
 ### D) Final checks
 - [ ] `anchor test` passes
 - [ ] `rustfmt` clean
-- [ ] `docs/CURRENT_STATE.md` updated
 - [ ] Any behavior changes reflected in README
 
 ---
@@ -344,7 +326,6 @@ After M4/M5, add a small number of “flow tests” that orchestrate multiple in
 
 Always keep these updated:
 - `README.md`: product requirements and architecture
-- `docs/CURRENT_STATE.md`: what’s implemented and what’s missing
 - `AGENTS.md`: repo rules and dev playbook
 
 Optional (recommended): create `docs/adr/` for Architecture Decision Records:
@@ -397,13 +378,13 @@ Copy into an issue/PR description:
 
 ### 14.2 PR Checklist
 - [ ] Tests added first and are comprehensive
-- [ ] New accounts include exact `SIZE`
+- [ ] New accounts derive `InitSpace` with every variable-size field bounded
 - [ ] Seeds use constants from `states.rs`
 - [ ] Errors grouped correctly
 - [ ] Instruction file is standalone and documented
 - [ ] `instructions/mod.rs` updated alphabetically
 - [ ] `lib.rs` wrapper added
-- [ ] Docs updated (`CURRENT_STATE.md`, maybe README)
+- [ ] Docs updated (README, if behavior changed)
 
 ### 14.3 “AI Request” Prompt Template (for engineers)
 When asking AI for work, include:

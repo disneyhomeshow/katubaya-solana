@@ -481,7 +481,7 @@ On any cancellation/refusal/expiry before completion, restore stock.
   - `MAX_NOTES_LEN`
   - `MAX_ZIP_PREFIXES`
   - `MAX_ALLOWED_MINTS`
-- Use `#[account(space = ...)]` with precise sizes.
+- Derive `InitSpace`, bound with `#[max_len(CONST)]`, `space = 8 + Struct::INIT_SPACE`.
 
 ### PDA seeds
 Keep them stable:

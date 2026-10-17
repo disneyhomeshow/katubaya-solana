@@ -1,24 +1,13 @@
 use anchor_lang::prelude::*;
 use crate::states::{ProgramConfig, SEED_CONFIG, MAX_ALLOWED_MINTS};
 
-/// Initializes the program configuration account.
-/// 
-/// This instruction creates the ProgramConfig PDA that stores:
-/// - Admin authority
-/// - Logistics wallet (fee receiver)
-/// - Paused state
-/// - Allowed token mints (optional allowlist)
-/// 
-/// # Arguments
-/// - `logistics_wallet`: The wallet that receives logistics/service fees
-/// - `paused`: Initial paused state (true = program paused)
-/// - `allowed_mints`: Optional vector of allowed SPL token mints (empty = no allowlist)
+/// Creates the singleton `ProgramConfig` PDA; see `ProgramConfig` for the fields.
 #[derive(Accounts)]
 pub struct InitConfig<'info> {
     #[account(
         init,
         payer = admin,
-        space = ProgramConfig::SIZE,
+        space = 8 + ProgramConfig::INIT_SPACE,
         seeds = [SEED_CONFIG],
         bump
     )]

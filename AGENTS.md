@@ -8,7 +8,6 @@ Farmer Core Solana Bridge is a Solana program (Rust + Anchor) that enables trans
 
 ## Related Documentation
 
-- **`docs/CURRENT_STATE.md`**: Detailed breakdown of what's implemented, what's missing, and current progress
 - **`docs/DEVELOPMENT_PLAN.md`**: Comprehensive development workflow, roadmap, milestones, and collaboration model
 - **`README.md`**: Product requirements, architecture, and business logic specifications
 
@@ -57,7 +56,7 @@ programs/farmer-core/src/
   - All constants must be defined here (e.g., `MAX_NAME_LEN`, `MAX_URI_LEN`)
   - All seed phrases must be defined as `pub const SEED_*: &[u8] = b"..."`
   - All account structs must use `#[account]` attribute
-  - Account structs must implement `SIZE` constant for space calculation
+  - Account structs derive `InitSpace`; every `Vec`/`String` field carries `#[max_len(CONST)]`
   - Use clear section comments to organize: `// ============================================================================`
 - **Structure**:
   ```rust
@@ -69,12 +68,9 @@ programs/farmer-core/src/
   
   // STATE ACCOUNTS
   #[account]
+  #[derive(InitSpace)]
   pub struct ProgramConfig {
-      // fields
-  }
-  
-  impl ProgramConfig {
-      pub const SIZE: usize = 8 + 32 + ...;
+      // fields; Vec/String bounded with #[max_len(CONST)]
   }
   ```
 
@@ -161,16 +157,15 @@ programs/farmer-core/src/
 5. **Declare module**: Add `pub mod new_instruction;` to `instructions/mod.rs`
 6. **Add to lib.rs**: Add the instruction function to the `#[program]` module
 7. **Run tests**: Ensure all tests pass
-8. **Update docs**: Update `docs/CURRENT_STATE.md` with implementation status
+8. **Update docs**: Update `README.md` if behavior changed
 
 > **See also**: `docs/DEVELOPMENT_PLAN.md` section 9 for detailed instruction-by-instruction checklist
 
 ### Account Sizing
 
-- Always calculate account size precisely using constants
-- Formula: `8 (discriminator) + sum of field sizes`
-- For vectors: `4 (length) + (item_size * max_items)`
-- Use `#[account(space = StructName::SIZE)]` in account constraints
+- Derive `InitSpace` on every account struct; bound `Vec`/`String` with `#[max_len(CONST)]`
+- Use `#[account(space = 8 + StructName::INIT_SPACE)]` in account constraints
+- Sanity check when reviewing: `8 (discriminator) + sum of field sizes`, vectors `4 + item_size * max_items`
 
 ### PDA Seeds
 
@@ -280,7 +275,6 @@ describe("init_config", () => {
 - Use `msg!` for important state changes in production code
 - Keep documentation updated:
   - `README.md`: Product requirements and architecture changes
-  - `docs/CURRENT_STATE.md`: Implementation status after each instruction
   - `docs/DEVELOPMENT_PLAN.md`: Roadmap and milestone updates
 
 ## Code Style
@@ -301,7 +295,7 @@ describe("init_config", () => {
 #[account(
     init,
     payer = payer,
-    space = AccountStruct::SIZE,
+    space = 8 + AccountStruct::INIT_SPACE,
     seeds = [SEED_ACCOUNT, ...],
     bump
 )]
@@ -415,8 +409,8 @@ anchor build
 **Error**: `AnchorError caused by account: <account>. Error Code: AccountNotEnoughKeys. Error Number: 3001`
 
 **Solution**: 
-1. Verify `SIZE` constant calculation in `states.rs`
-2. Ensure `#[account(space = StructName::SIZE)]` matches the calculated size
+1. Verify every `Vec`/`String` field in `states.rs` has `#[max_len(...)]`
+2. Ensure the constraint is `#[account(space = 8 + StructName::INIT_SPACE)]`
 3. Check vector sizing: `4 (length) + (item_size * max_items)`
 
 #### Missing Solana Keypair for Tests
@@ -425,12 +419,6 @@ anchor build
 
 **Solution**: Create a Solana keypair for local testing.
 
-**Option 1: Use the setup script** (recommended):
-```bash
-./scripts/setup-keypair.sh
-```
-
-**Option 2: Manual setup**:
 ```bash
 # Create the Solana config directory if it doesn't exist
 mkdir -p ~/.config/solana
@@ -484,18 +472,16 @@ solana airdrop 2 $(solana address -k ~/.config/solana/id.json) --url localhost
 
 When in doubt:
 1. Check `README.md` for product requirements and architecture
-2. Check `docs/CURRENT_STATE.md` to see what's implemented and what's missing
-3. Check `docs/DEVELOPMENT_PLAN.md` for development workflow, roadmap, and milestones
-4. Review existing instructions for patterns
-5. Ensure consistency with established conventions
-6. Validate against security requirements in README section 12
-7. Check this document's "Common Errors and Solutions" section
+2. Check `docs/DEVELOPMENT_PLAN.md` for development workflow, roadmap, and milestones
+3. Review existing instructions for patterns
+4. Ensure consistency with established conventions
+5. Validate against security requirements in README section 12
+6. Check this document's "Common Errors and Solutions" section
 
 ## Documentation Hierarchy
 
 For different needs, consult:
 
 - **Product Requirements & Architecture**: `README.md`
-- **Current Implementation Status**: `docs/CURRENT_STATE.md`
 - **Development Workflow & Roadmap**: `docs/DEVELOPMENT_PLAN.md`
 - **Repository Guidelines & Patterns**: This document (`AGENTS.md`)

@@ -8,7 +8,7 @@ pub const MAX_NAME_LEN: usize = 100;
 pub const MAX_URI_LEN: usize = 200;
 pub const MAX_NOTES_LEN: usize = 500;
 pub const MAX_ZIP_PREFIXES: usize = 100;
-pub const MAX_ALLOWED_MINTS: usize = 50;
+pub const MAX_ALLOWED_MINTS: usize = 30; // 30 * 32 B is the most that fits in one 1232 B tx
 
 // ============================================================================
 // SEED PHRASES
@@ -29,17 +29,11 @@ pub const SEED_ESCROW: &[u8] = b"escrow";
 // ============================================================================
 
 #[account]
+#[derive(InitSpace)]
 pub struct ProgramConfig {
     pub admin: Pubkey,
     pub logistics_wallet: Pubkey,
     pub paused: bool,
+    #[max_len(MAX_ALLOWED_MINTS)]
     pub allowed_mints: Vec<Pubkey>,
-}
-
-impl ProgramConfig {
-    pub const SIZE: usize = 8 // discriminator
-        + 32 // admin
-        + 32 // logistics_wallet
-        + 1 // paused
-        + 4 + (32 * MAX_ALLOWED_MINTS); // allowed_mints vector
 }
