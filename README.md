@@ -157,6 +157,7 @@ Order fields:
 - `farmer: Pubkey`
 - `warehouse: Pubkey`
 - `customer: Pubkey`
+- `mint: Pubkey` (copied from the offer; `transfer_checked` needs it)
 - `qty: u64`
 - `subtotal_minor: u64`
 - `service_fee_minor: u64` (stored at create for determinism)
@@ -167,10 +168,10 @@ Order fields:
 - `status: OrderStatus` (see lifecycle)
 - `created_at: i64`
 - `expires_at: i64` (timeouts)
+- `escrow_bump: u8` (lets the program sign escrow withdrawals without re-deriving)
 
 **Escrow Token Account**
-- Owned by `escrow_authority` PDA:
-  - seeds: `["escrow", order_pubkey]`
+- Token account at PDA `["escrow", order_pubkey]`, and its own authority: the program signs withdrawals with those seeds
 - Holds:
   - Pickup: `subtotal_minor`
   - Delivery: `subtotal_minor` then later `+ delivery_fee_minor` after acceptance
@@ -343,6 +344,8 @@ Recommended expiry defaults:
 - Delivery quote pending: short (e.g., 1–6 hours)
 - Quoted awaiting acceptance: short (e.g., 1–6 hours)
 - Pickup escrowed: longer (e.g., 24–72 hours) depending on operations
+
+Implemented as constants in `states.rs`: 6 h, 6 h and 72 h; `ESCROWED_READY` reuses the 72 h window.
 
 ---
 

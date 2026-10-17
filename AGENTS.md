@@ -21,6 +21,7 @@ programs/farmer-core/src/
 ├── states.rs            # All account structs, constants, and seed phrases
 ├── errors.rs            # FarmerCoreError: one enum, sections per entity
 ├── events.rs            # #[event] structs, one per README section 9 event
+├── escrow.rs            # deposit/withdraw CPIs for the order escrow token account
 └── instructions/       # Individual instruction files
     ├── mod.rs          # Module declarations
     └── *.rs           # One file per instruction
@@ -31,7 +32,7 @@ programs/farmer-core/src/
 #### `lib.rs`
 - **Purpose**: Main program module that declares all instructions
 - **Rules**:
-  - Must declare all modules: `errors`, `events`, `instructions`, `states`
+  - Must declare all modules: `errors`, `escrow`, `events`, `instructions`, `states`
   - Each instruction function should be a thin wrapper that calls the implementation in `instructions/`
   - `use crate::instructions::*;` at the top so Context types stay short: `Context<InitConfig>`
 - **Example**:
@@ -39,6 +40,7 @@ programs/farmer-core/src/
   use crate::instructions::*;
 
   pub mod errors;
+  pub mod escrow;
   pub mod events;
   pub mod instructions;
   pub mod states;
@@ -107,6 +109,14 @@ programs/farmer-core/src/
   - Field names and types follow README section 9 exactly; the indexer depends on them
   - `emit!` in the handler after the state writes, never inside a constraint
   - Tests assert emission with `events(builder)` from `tests/helpers.ts`; the TS parser reports names in camelCase (`customerConfirmed`)
+
+#### `escrow.rs`
+- **Purpose**: the only place that issues token CPIs for orders
+- **Rules**:
+  - The escrow is a token account at PDA `[SEED_ESCROW, order]` that is its own authority (`token::authority = escrow` at init)
+  - `deposit(...)` moves customer -> escrow, signed by the customer; `withdraw(...)` moves escrow -> destination, signed with the seeds and `order.escrow_bump`
+  - Always `transfer_checked` through `anchor_spl::token_interface`, so SPL Token and Token-2022 both work
+  - Refunds move `escrow.amount` (the real balance), never a recomputed sum
 
 #### `instructions/*.rs`
 - **Purpose**: One file per instruction, containing both the accounts struct and implementation
@@ -217,7 +227,7 @@ programs/farmer-core/src/
 
 - **One test file per instruction**: `tests/instruction_name.ts`, one `describe`, a `before` that builds the fixtures, one `it` per behavior
 - **`ProgramConfig` is a singleton**: the root `before` in `tests/helpers.ts` creates it once; no test file calls `init_config` for setup
-- **Shared helpers** in `tests/helpers.ts`: `program`, `provider`, PDA derivers, `fund()`, `freshId()`, `fails(promise)`, `events(builder)`, `setPaused(bool)`, and one fixture per entity (`createWarehouse`, `registerFarmer`, `approvedFarmer`, `registerCustomer`, `requestConfirmation`, `publishOffer` / `publishOfferTx`). The file is short; read it before adding a fixture
+- **Shared helpers** in `tests/helpers.ts`: `program`, `provider`, `payer`, PDA derivers, `fund()`, `freshId()`, `fails(promise)`, `events(builder)`, `setPaused(bool)`, token helpers (`testMint()`, `fundTokens(owner, amount)`, `tokenBalance(account)`), one fixture per entity (`createWarehouse`, `registerFarmer`, `approvedFarmer`, `registerCustomer`, `requestConfirmation`, `confirmedCustomer`, `publishOffer` / `publishOfferTx`, `createOrder` / `createOrderTx`) and `market()`, which builds a whole warehouse-farmer-offer-customer graph. The root `before` also creates the real SPL mint that goes into `config.allowed_mints`. Read the file before adding a fixture
 - **Fixtures use fresh keypairs and ids** per file so files never collide on PDAs
 - **Account resolution**: let Anchor resolve PDAs, the provider wallet and programs from the IDL; pass only what it cannot derive (`.accountsPartial` to override a signer)
 - **Flow test**: lands together with `create_order` (M4) as `tests/flow_order.ts`: confirm_customer → publish_offer → create_order → quote_delivery_fee → accept_delivery_fee; M5 extends it through mark_in_transit → complete_order
@@ -460,6 +470,25 @@ anchor build
 1. Verify every `Vec`/`String` field in `states.rs` has `#[max_len(...)]`
 2. Ensure the constraint is `#[account(space = 8 + StructName::INIT_SPACE)]`
 3. Check vector sizing: `4 (length) + (item_size * max_items)`
+
+#### `feature edition2024 is required` while building
+
+**Error**: `error: failed to parse manifest at .../<crate>/Cargo.toml ... feature edition2024 is required`
+
+**Cause**: `anchor build` compiles with the cargo shipped in Solana platform-tools v1.48 (rustc 1.84.1), which cannot read edition-2024 crates, while the host toolchain (1.89) resolves the newest versions.
+
+**Solution**: pin the offending crate in `Cargo.lock` to its last edition-2021 release and commit the lock:
+```bash
+cargo update -p blake3 --precise 1.5.5          # 1.8.x pulls digest 0.11 / block-buffer 0.12
+cargo update -p zeroize_derive --precise 1.4.2  # 1.5.0 is edition 2024
+```
+Never run a bare `cargo update`; it reintroduces them. To find new offenders, scan every locked crate's manifest for `edition = "2024"` or `rust-version` above 1.84.1.
+
+#### `Test validator does not look started`
+
+**Error**: `Unable to get latest blockhash. Test validator does not look started.`
+
+**Solution**: the validator needs longer than Anchor's default 10 s after a long build. `Anchor.toml` sets `[test] startup_wait = 30000`; rerun `anchor test`.
 
 #### Missing Solana Keypair for Tests
 

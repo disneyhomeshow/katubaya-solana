@@ -11,6 +11,11 @@ pub const MAX_ZIP_PREFIXES: usize = 100;
 pub const MAX_ALLOWED_MINTS: usize = 30; // round cap; a single 1232 B tx already fits at most 29 pubkeys
 pub const MAX_FEE_BPS: u16 = 10_000;
 
+// Order timeouts (seconds), one per waiting state. EscrowedReady reuses the pickup window.
+pub const EXPIRY_PENDING_QUOTE_SECS: i64 = 6 * 60 * 60;
+pub const EXPIRY_QUOTED_SECS: i64 = 6 * 60 * 60;
+pub const EXPIRY_PICKUP_SECS: i64 = 72 * 60 * 60;
+
 // ============================================================================
 // SEED PHRASES
 // ============================================================================
@@ -118,4 +123,43 @@ pub struct LotOffer {
     pub qty_remaining: u64,
     pub active: bool,
     pub created_at: i64,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, InitSpace)]
+pub enum FulfillmentMode {
+    Pickup,
+    Delivery,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, InitSpace)]
+pub enum OrderStatus {
+    EscrowedPickup,
+    PendingDeliveryQuote,
+    DeliveryQuoted,
+    EscrowedReady,
+    InTransit,
+    Fulfilled,
+    Refused,
+    Canceled,
+    Expired,
+}
+
+#[account]
+#[derive(InitSpace)]
+pub struct Order {
+    pub order_id: u64,
+    pub offer: Pubkey,
+    pub farmer: Pubkey,
+    pub warehouse: Pubkey,
+    pub customer: Pubkey,
+    pub mint: Pubkey,
+    pub qty: u64,
+    pub subtotal_minor: u64,
+    pub service_fee_minor: u64, // fixed at creation: subtotal * fee_bps / 10_000
+    pub delivery_fee_minor: u64, // 0 until quoted
+    pub fulfillment_mode: FulfillmentMode,
+    pub status: OrderStatus,
+    pub created_at: i64,
+    pub expires_at: i64,
+    pub escrow_bump: u8, // escrow token account PDA ["escrow", order], its own authority
 }

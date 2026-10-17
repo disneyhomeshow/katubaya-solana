@@ -1,6 +1,13 @@
 import * as anchor from "@coral-xyz/anchor";
 import { Program } from "@coral-xyz/anchor";
 import { FarmerCore } from "../target/types/farmer_core";
+import {
+  TOKEN_PROGRAM_ID,
+  createMint,
+  getAccount,
+  getOrCreateAssociatedTokenAccount,
+  mintTo,
+} from "@solana/spl-token";
 
 export const provider = anchor.AnchorProvider.env();
 anchor.setProvider(provider);
@@ -35,11 +42,20 @@ let nextId = Date.now() % 1_000_000;
 export const freshId = () => nextId++;
 
 export const logisticsWallet = Keypair.generate().publicKey;
-export const allowedMints = [Keypair.generate().publicKey];
+export const payer = (provider.wallet as anchor.Wallet).payer;
+export const DECIMALS = 6;
+/** Real SPL mint(s) created in the root `before` and written to config.allowed_mints. */
+export const allowedMints: anchor.web3.PublicKey[] = [];
+export const testMint = () => allowedMints[0];
 
 // ProgramConfig is a singleton: create it once, before any file's tests.
 before(async () => {
-  if (await provider.connection.getAccountInfo(configPDA)) return;
+  const existing = await program.account.programConfig.fetchNullable(configPDA);
+  if (existing) {
+    allowedMints.push(...existing.allowedMints);
+    return;
+  }
+  allowedMints.push(await createMint(provider.connection, payer, payer.publicKey, null, DECIMALS));
   await program.methods.initConfig(logisticsWallet, false, allowedMints).rpc();
 });
 
@@ -134,3 +150,84 @@ export const publishOffer = async (farmer: anchor.web3.Keypair, o: Partial<Retur
 
 /** Admin (provider wallet) flips config.paused. */
 export const setPaused = (paused: boolean) => program.methods.setPaused(paused).rpc();
+
+export const orderPDA = (offer: anchor.web3.PublicKey, customer: anchor.web3.PublicKey, id: number) =>
+  pda(Buffer.from("order"), offer.toBuffer(), customer.toBuffer(), u64(id));
+export const escrowPDA = (order: anchor.web3.PublicKey) => pda(Buffer.from("escrow"), order.toBuffer());
+
+/** `owner`'s ATA for the test mint, holding `amount` minor units. */
+export const fundTokens = async (owner: anchor.web3.Keypair, amount: number) => {
+  const ata = await getOrCreateAssociatedTokenAccount(provider.connection, payer, testMint(), owner.publicKey);
+  if (amount > 0) await mintTo(provider.connection, payer, testMint(), ata.address, payer, amount);
+  return ata.address;
+};
+export const tokenBalance = async (account: anchor.web3.PublicKey) =>
+  Number((await getAccount(provider.connection, account)).amount);
+
+/** Customer registered, confirmed by `operator`'s warehouse, with `tokens` minor units in their ATA. */
+export const confirmedCustomer = async (
+  warehouse: anchor.web3.PublicKey,
+  operator: anchor.web3.Keypair,
+  tokens = 100_000_000
+) => {
+  const customer = await registerCustomer();
+  const warehouseCustomer = await requestConfirmation(warehouse, customer);
+  await program.methods
+    .confirmCustomer(null)
+    .accountsPartial({ warehouseCustomer, warehouse, operator: operator.publicKey })
+    .signers([operator])
+    .rpc();
+  const ata = await fundTokens(customer, tokens);
+  return { customer, ata };
+};
+
+export type Mode = "pickup" | "delivery";
+export type Buyer = { customer: anchor.web3.Keypair; ata: anchor.web3.PublicKey };
+
+export const createOrderTx = (
+  buyer: Buyer,
+  offer: anchor.web3.PublicKey,
+  warehouse: anchor.web3.PublicKey,
+  id: number,
+  qty: number,
+  mode: Mode,
+  mint = testMint()
+) =>
+  program.methods
+    .createOrder(new BN(id), new BN(qty), mode === "pickup" ? { pickup: {} } : { delivery: {} })
+    .accountsPartial({
+      offer,
+      warehouse,
+      mint,
+      customerTokenAccount: buyer.ata,
+      customer: buyer.customer.publicKey,
+      tokenProgram: TOKEN_PROGRAM_ID,
+    })
+    .signers([buyer.customer]);
+
+export const createOrder = async (
+  buyer: Buyer,
+  offer: anchor.web3.PublicKey,
+  warehouse: anchor.web3.PublicKey,
+  mode: Mode,
+  qty = 10,
+  id = freshId()
+) => {
+  await createOrderTx(buyer, offer, warehouse, id, qty, mode).rpc();
+  return orderPDA(offer, buyer.customer.publicKey, id);
+};
+
+/** A whole market: warehouse + operator, approved farmer with one offer, confirmed and funded customer. */
+export const market = async (offerOverrides: Partial<ReturnType<typeof offerArgs>> = {}) => {
+  const operator = await fund();
+  const warehouse = await createWarehouse(operator.publicKey);
+  const farmer = await approvedFarmer(warehouse, operator);
+  const offer = await publishOffer(farmer, offerOverrides);
+  const buyer = await confirmedCustomer(warehouse, operator);
+  return { operator, warehouse, farmer, offer, buyer };
+};
+
+export const SUBTOTAL = 10 * 1_000_000; // default order: qty 10 at price 1_000_000
+export const SERVICE_FEE = (SUBTOTAL * 250) / 10_000; // warehouse fixture fee_bps = 250
+export const H6 = 6 * 60 * 60;
+export const H72 = 72 * 60 * 60;

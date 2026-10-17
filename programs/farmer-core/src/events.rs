@@ -1,3 +1,4 @@
+use crate::states::FulfillmentMode;
 use anchor_lang::prelude::*;
 
 // One struct per event in README section 9. Emitted by the handler after the state writes.
@@ -37,4 +38,38 @@ pub struct OfferPublished {
 #[event]
 pub struct OfferDeactivated {
     pub offer: Pubkey,
+}
+
+#[event]
+pub struct OrderCreated {
+    pub order: Pubkey,
+    pub offer: Pubkey,
+    pub farmer: Pubkey,
+    pub warehouse: Pubkey,
+    pub customer: Pubkey,
+    pub qty: u64,
+    pub subtotal_minor: u64,
+    pub service_fee_minor: u64,
+    pub mode: FulfillmentMode,
+}
+
+#[event]
+pub struct DeliveryFeeQuoted {
+    pub order: Pubkey,
+    pub delivery_fee_minor: u64,
+}
+
+#[event]
+pub struct DeliveryFeeAccepted {
+    pub order: Pubkey,
+}
+
+#[event]
+pub struct DeliveryFeeRejected {
+    pub order: Pubkey,
+}
+
+#[event]
+pub struct OrderRefused {
+    pub order: Pubkey,
 }

@@ -62,4 +62,24 @@ pub enum FarmerCoreError {
     InvalidExpiry,
     #[msg("Offer is not active")]
     OfferInactive,
+
+    // ---- Order
+    #[msg("Customer is not confirmed by the warehouse")]
+    CustomerNotConfirmed,
+    #[msg("Offer has expired")]
+    OfferExpired,
+    #[msg("Not enough stock remaining")]
+    InsufficientStock,
+    #[msg("Arithmetic overflow")]
+    MathOverflow,
+    #[msg("Mint does not match the offer")]
+    MintMismatch,
+    #[msg("Offer does not match the order")]
+    OfferMismatch,
+    #[msg("Signer or token account is not the order's customer")]
+    UnauthorizedCustomer,
+    #[msg("Order status does not allow this action")]
+    InvalidOrderStatus,
+    #[msg("Order is not a delivery order")]
+    NotDeliveryOrder,
 }

@@ -1,10 +1,11 @@
 #![allow(unexpected_cfgs)]
 
 use crate::instructions::*;
-use crate::states::ZipPrefix;
+use crate::states::{FulfillmentMode, ZipPrefix};
 use anchor_lang::prelude::*;
 
 pub mod errors;
+pub mod escrow;
 pub mod events;
 pub mod instructions;
 pub mod states;
@@ -125,5 +126,38 @@ pub mod farmer_core {
     /// Admin pauses or resumes market actions
     pub fn set_paused(ctx: Context<SetPaused>, paused: bool) -> Result<()> {
         instructions::set_paused::set_paused(ctx, paused)
+    }
+
+    /// Confirmed customer buys from an offer: reserves stock and escrows the subtotal
+    pub fn create_order(
+        ctx: Context<CreateOrder>,
+        order_id: u64,
+        qty: u64,
+        mode: FulfillmentMode,
+    ) -> Result<()> {
+        instructions::create_order::create_order(ctx, order_id, qty, mode)
+    }
+
+    /// Warehouse operator quotes the delivery fee of a pending delivery order
+    pub fn quote_delivery_fee(
+        ctx: Context<QuoteDeliveryFee>,
+        delivery_fee_minor: u64,
+    ) -> Result<()> {
+        instructions::quote_delivery_fee::quote_delivery_fee(ctx, delivery_fee_minor)
+    }
+
+    /// Customer accepts the quote and escrows the delivery fee
+    pub fn accept_delivery_fee(ctx: Context<AcceptDeliveryFee>) -> Result<()> {
+        instructions::accept_delivery_fee::accept_delivery_fee(ctx)
+    }
+
+    /// Customer rejects the quote: subtotal refunded, stock restored, order canceled
+    pub fn reject_delivery_fee(ctx: Context<RejectDeliveryFee>) -> Result<()> {
+        instructions::reject_delivery_fee::reject_delivery_fee(ctx)
+    }
+
+    /// Warehouse operator refuses a delivery order before transit: full refund, stock restored
+    pub fn refuse_delivery(ctx: Context<RefuseDelivery>) -> Result<()> {
+        instructions::refuse_delivery::refuse_delivery(ctx)
     }
 }

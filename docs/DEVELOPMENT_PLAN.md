@@ -121,6 +121,7 @@ programs/farmer-core/src/
 ├── states.rs
 ├── errors.rs
 ├── events.rs
+├── escrow.rs
 └── instructions/
 ├── mod.rs
 └── *.rs
@@ -133,6 +134,7 @@ programs/farmer-core/src/
 - All accounts in `states.rs` derive `InitSpace`
 - One `FarmerCoreError` enum in `errors.rs`, sections per entity
 - Events in `events.rs`, one struct per README section 9 event
+- Token CPIs only through `escrow.rs` (`deposit` / `withdraw`)
 - One instruction per file in `instructions/`
 - `instructions/mod.rs` lists modules in alphabetical order
 
