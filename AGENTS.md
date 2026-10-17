@@ -20,6 +20,7 @@ programs/farmer-core/src/
 ├── lib.rs              # Main program entry point, declares all instructions
 ├── states.rs            # All account structs, constants, and seed phrases
 ├── errors.rs            # FarmerCoreError: one enum, sections per entity
+├── events.rs            # #[event] structs, one per README section 9 event
 └── instructions/       # Individual instruction files
     ├── mod.rs          # Module declarations
     └── *.rs           # One file per instruction
@@ -30,7 +31,7 @@ programs/farmer-core/src/
 #### `lib.rs`
 - **Purpose**: Main program module that declares all instructions
 - **Rules**:
-  - Must declare all modules: `errors`, `instructions`, `states`
+  - Must declare all modules: `errors`, `events`, `instructions`, `states`
   - Each instruction function should be a thin wrapper that calls the implementation in `instructions/`
   - `use crate::instructions::*;` at the top so Context types stay short: `Context<InitConfig>`
 - **Example**:
@@ -38,6 +39,7 @@ programs/farmer-core/src/
   use crate::instructions::*;
 
   pub mod errors;
+  pub mod events;
   pub mod instructions;
   pub mod states;
 
@@ -98,6 +100,13 @@ programs/farmer-core/src/
   }
   ```
 
+#### `events.rs`
+- **Purpose**: the `#[event]` structs, one per event in README section 9
+- **Rules**:
+  - Field names and types follow README section 9 exactly; the indexer depends on them
+  - `emit!` in the handler after the state writes, never inside a constraint
+  - Tests assert emission with `events(builder)` from `tests/helpers.ts`; the TS parser reports names in camelCase (`customerConfirmed`)
+
 #### `instructions/*.rs`
 - **Purpose**: One file per instruction, containing both the accounts struct and implementation
 - **Rules**:
@@ -154,7 +163,7 @@ programs/farmer-core/src/
 
 1. **Write tests first**: Create `tests/instruction_name.ts` with all test cases
 2. **Add state**: If needed, add account structs to `states.rs`
-3. **Add errors**: If needed, add variants to `FarmerCoreError` under the entity section
+3. **Add errors / events**: If needed, add variants to `FarmerCoreError` under the entity section and `#[event]` structs to `events.rs`
 4. **Create instruction file**: Add `instructions/new_instruction.rs`
 5. **Declare module**: Add `pub mod new_instruction;` to `instructions/mod.rs`
 6. **Add to lib.rs**: Add the instruction function to the `#[program]` module
@@ -207,7 +216,7 @@ programs/farmer-core/src/
 
 - **One test file per instruction**: `tests/instruction_name.ts`, one `describe`, a `before` that builds the fixtures, one `it` per behavior
 - **`ProgramConfig` is a singleton**: the root `before` in `tests/helpers.ts` creates it once; no test file calls `init_config` for setup
-- **Shared helpers** in `tests/helpers.ts`: `program`, `provider`, PDA derivers (`configPDA`, `warehousePDA(id)`, `farmerPDA(pk)`, `customerPDA(pk)`), `fund()` (new keypair with airdropped SOL), `freshId()`, `fails(promise)` (resolves to the Anchor error code or the raw error string), and fixtures `createWarehouse(operator)` / `registerFarmer(warehouse)`
+- **Shared helpers** in `tests/helpers.ts`: `program`, `provider`, PDA derivers (`configPDA`, `warehousePDA(id)`, `farmerPDA(pk)`, `customerPDA(pk)`), `fund()` (new keypair with airdropped SOL), `freshId()`, `fails(promise)` (resolves to the Anchor error code or the raw error string), fixtures `createWarehouse(operator)` / `registerFarmer(warehouse)` / `registerCustomer()` / `requestConfirmation(warehouse, customer)`, `wcustomerPDA(warehouse, customer)`, and `events(builder)` (sends with commitment `confirmed` and decodes the tx logs with `EventParser`)
 - **Fixtures use fresh keypairs and ids** per file so files never collide on PDAs
 - **Account resolution**: let Anchor resolve PDAs, the provider wallet and programs from the IDL; pass only what it cannot derive (`.accountsPartial` to override a signer)
 - **Flow test**: lands together with `create_order` (M4) as `tests/flow_order.ts`: confirm_customer → publish_offer → create_order → quote_delivery_fee → accept_delivery_fee; M5 extends it through mark_in_transit → complete_order
@@ -220,7 +229,7 @@ Each instruction test file covers, one `it` each:
 2. Each authorization failure (wrong signer, missing signer)
 3. Each named error the handler can return, triggered once
 4. Each illegal state transition, if the instruction checks a status
-5. Event emission, if the instruction emits one
+5. Event emission via `events(builder)`, if the instruction emits one; names come back camelCase
 
 Skip: parameter permutations that hit the same branch, inputs that cannot reach the program (args larger than a transaction), and tests that only re-run the harness (re-deriving a PDA and comparing it with itself).
 

@@ -43,7 +43,7 @@ Created: `CustomerProfile` (`programs/farmer-core/src/states.rs`)
 
 Seeds: `[SEED_CUSTOMER (b"customer"), customer.key()]`. Size: `8 + CustomerProfile::INIT_SPACE` = 245 bytes.
 
-Reads no other account.
+Reads no other account. Read by `request_customer_confirmation` (M2): the profile must exist before a customer can ask a warehouse for confirmation.
 
 ## Design decisions
 

@@ -44,4 +44,8 @@ pub enum FarmerCoreError {
     // ---- Customer
     #[msg("Customer not found")]
     CustomerNotFound,
+    #[msg("Customer is already confirmed for this warehouse")]
+    AlreadyConfirmed,
+    #[msg("Customer is already revoked for this warehouse")]
+    AlreadyRevoked,
 }

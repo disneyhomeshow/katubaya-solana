@@ -72,7 +72,7 @@ The code is the source of truth: `programs/farmer-core/src/` for what exists, `g
   - relevant file snippets if needed
 - AI returns:
   - test file first (`tests/<instruction>.ts`)
-  - then code changes (`states.rs`, `errors.rs`, `instructions/<instruction>.rs`, `instructions/mod.rs`, `lib.rs`)
+  - then code changes (`states.rs`, `errors.rs`, `events.rs`, `instructions/<instruction>.rs`, `instructions/mod.rs`, `lib.rs`)
   - explanation of validations and edge cases covered (short, explicit)
 
 ---
@@ -99,6 +99,7 @@ For each instruction:
 4. **Implement instruction**
    - add/update state structs in `states.rs` (derive `InitSpace`)
    - add/update errors in `errors.rs`
+   - add events in `events.rs` (README section 9)
    - implement instruction in `instructions/<name>.rs`
    - export wrapper in `lib.rs`
 5. **Run tests (must pass)**
@@ -119,6 +120,7 @@ programs/farmer-core/src/
 ├── lib.rs
 ├── states.rs
 ├── errors.rs
+├── events.rs
 └── instructions/
 ├── mod.rs
 └── *.rs
@@ -130,6 +132,7 @@ programs/farmer-core/src/
 - All constants + seeds in `states.rs`
 - All accounts in `states.rs` derive `InitSpace`
 - One `FarmerCoreError` enum in `errors.rs`, sections per entity
+- Events in `events.rs`, one struct per README section 9 event
 - One instruction per file in `instructions/`
 - `instructions/mod.rs` lists modules in alphabetical order
 
@@ -267,7 +270,7 @@ Minimum coverage:
 
 ### C) Implementation
 - [ ] Add/update account struct(s) in `states.rs` + `InitSpace`
-- [ ] Add/update error enums in `errors.rs`
+- [ ] Add/update errors in `errors.rs` and events in `events.rs`
 - [ ] Create `instructions/x.rs` with `#[derive(Accounts)]` + impl fn
 - [ ] Export in `instructions/mod.rs` (alphabetical)
 - [ ] Thin wrapper in `lib.rs`

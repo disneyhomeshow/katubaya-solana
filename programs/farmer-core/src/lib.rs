@@ -5,6 +5,7 @@ use crate::states::ZipPrefix;
 use anchor_lang::prelude::*;
 
 pub mod errors;
+pub mod events;
 pub mod instructions;
 pub mod states;
 
@@ -67,5 +68,23 @@ pub mod farmer_core {
         public_profile_uri: Option<String>,
     ) -> Result<()> {
         instructions::register_customer::register_customer(ctx, public_profile_uri)
+    }
+
+    /// Customer asks a warehouse to confirm them (address exchanged off-chain)
+    pub fn request_customer_confirmation(ctx: Context<RequestCustomerConfirmation>) -> Result<()> {
+        instructions::request_customer_confirmation::request_customer_confirmation(ctx)
+    }
+
+    /// Warehouse operator confirms a customer; also re-admits a revoked one
+    pub fn confirm_customer(
+        ctx: Context<ConfirmCustomer>,
+        notes_hash: Option<[u8; 32]>,
+    ) -> Result<()> {
+        instructions::confirm_customer::confirm_customer(ctx, notes_hash)
+    }
+
+    /// Warehouse operator revokes a pending or confirmed customer
+    pub fn revoke_customer(ctx: Context<RevokeCustomer>) -> Result<()> {
+        instructions::revoke_customer::revoke_customer(ctx)
     }
 }

@@ -80,3 +80,20 @@ pub struct CustomerProfile {
     #[max_len(MAX_URI_LEN)]
     pub public_profile_uri: Option<String>,
 }
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, InitSpace)]
+pub enum WarehouseCustomerStatus {
+    Pending,
+    Confirmed,
+    Revoked,
+}
+
+#[account]
+#[derive(InitSpace)]
+pub struct WarehouseCustomer {
+    pub warehouse: Pubkey,
+    pub customer: Pubkey,
+    pub status: WarehouseCustomerStatus,
+    pub confirmed_at: Option<i64>,
+    pub notes_hash: Option<[u8; 32]>, // hash of the off-chain record, never PII
+}

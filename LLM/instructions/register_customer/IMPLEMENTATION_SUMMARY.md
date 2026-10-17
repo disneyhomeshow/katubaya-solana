@@ -31,3 +31,4 @@ None beyond a funded signer (rent for a 245-byte account plus the transaction fe
 ## History
 
 - 2026-10-17 M1: created
+- 2026-10-17 M2: `request_customer_confirmation` now requires the profile (read-only, via `seeds` constraint); no code change here

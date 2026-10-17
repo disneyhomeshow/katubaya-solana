@@ -59,3 +59,36 @@ export const registerFarmer = async (warehouse: anchor.web3.PublicKey) => {
     .rpc();
   return { farmer, profile: farmerPDA(farmer.publicKey) };
 };
+
+export const wcustomerPDA = (warehouse: anchor.web3.PublicKey, customer: anchor.web3.PublicKey) =>
+  pda(Buffer.from("wcustomer"), warehouse.toBuffer(), customer.toBuffer());
+
+export const registerCustomer = async () => {
+  const customer = await fund();
+  await program.methods
+    .registerCustomer(null)
+    .accountsPartial({ customer: customer.publicKey })
+    .signers([customer])
+    .rpc();
+  return customer;
+};
+
+export const requestConfirmation = async (warehouse: anchor.web3.PublicKey, customer: anchor.web3.Keypair) => {
+  await program.methods
+    .requestCustomerConfirmation()
+    .accountsPartial({ customer: customer.publicKey, warehouse })
+    .signers([customer])
+    .rpc();
+  return wcustomerPDA(warehouse, customer.publicKey);
+};
+
+/** Sends the instruction and returns the events it emitted, decoded from the tx logs. */
+export const events = async (builder: { rpc(opts?: anchor.web3.ConfirmOptions): Promise<string> }) => {
+  const sig = await builder.rpc({ commitment: "confirmed" });
+  const tx = await provider.connection.getTransaction(sig, {
+    commitment: "confirmed",
+    maxSupportedTransactionVersion: 0,
+  });
+  const parser = new anchor.EventParser(program.programId, program.coder);
+  return [...parser.parseLogs(tx.meta.logMessages)].map((e) => ({ name: e.name, data: e.data }));
+};
