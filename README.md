@@ -330,15 +330,23 @@ Order fields:
   - requires `status == IN_TRANSIT`
   - transfers:
     - farmer payout = `subtotal - service_fee` → farmer ATA
-    - logistics payout = `service_fee + delivery_fee` → logistics_wallet ATA
+    - logistics payout = whatever the escrow still holds after the farmer is paid, normally
+      `service_fee + delivery_fee` → logistics_wallet ATA. Taking the remainder instead of the sum
+      drains the account to zero so it can be closed, and sweeps out any stray tokens sent to the
+      escrow PDA; `OrderCompleted.logistics_payout` reports the amount actually transferred
   - status → `FULFILLED`
 
 ### 8.7 Timeouts / expirations
 - `expire_order(order)`
-  - callable by anyone after `expires_at`
+  - callable by anyone after `expires_at` (no signer at all; whoever sends the transaction pays its fee)
   - refunds escrow
   - restores stock
   - status → `EXPIRED`
+
+Every terminal path (`reject_delivery_fee`, `refuse_delivery`, `expire_order`, `complete_order`) also
+closes the escrow token account and returns its rent to the customer, who paid it at `create_order`.
+Because the escrow is gone afterwards, a replayed terminal call fails on account resolution
+(`AccountNotInitialized`) rather than on the status gate.
 
 Recommended expiry defaults:
 - Delivery quote pending: short (e.g., 1–6 hours)
@@ -410,6 +418,10 @@ Clients must convert UI quantities ↔ on-chain integers deterministically.
 - Use SPL token transfers for payment (e.g., USDC).
 - Prefer `anchor_spl::token_interface` to support both Token Program and Token-2022.
 - Escrow ATA should be a program-derived authority account.
+- **Do not allowlist a Token-2022 mint that charges a transfer fee.** The fee is withheld on the
+  receiving account, so the escrow would both hold less than the subtotal (breaking the payout
+  arithmetic) and refuse to close until the withheld amount is harvested. `allowed_mints` is the only
+  control: it is set once at `init_config` and the program does not inspect mint extensions.
 
 ---
 

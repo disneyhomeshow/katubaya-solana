@@ -3,7 +3,7 @@ import * as anchor from "@solana/web3.js";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import {
   program, BN, fund, logisticsWallet, createWarehouse, approvedFarmer, publishOffer, confirmedCustomer,
-  createOrder, tokenBalance, escrowPDA, ataOf, testMint, SUBTOTAL, SERVICE_FEE,
+  createOrder, tokenBalance, escrowPDA, escrowClosed, ataOf, testMint, SUBTOTAL, SERVICE_FEE,
 } from "./helpers";
 
 // End-to-end delivery flow: confirm -> publish -> create -> quote -> accept -> in transit -> complete.
@@ -91,7 +91,7 @@ describe("flow: delivery order", () => {
       .rpc();
     expect(await tokenBalance(farmerAta)).to.equal(SUBTOTAL - SERVICE_FEE);
     expect(await tokenBalance(logisticsAta)).to.equal(logisticsBefore + SERVICE_FEE + FEE);
-    expect(await tokenBalance(escrowPDA(order))).to.equal(0);
+    expect(await escrowClosed(order)).to.be.true;
     expect(await tokenBalance(buyer.ata)).to.equal(start - SUBTOTAL - FEE);
     expect((await program.account.order.fetch(order)).status).to.deep.equal({ fulfilled: {} });
   });

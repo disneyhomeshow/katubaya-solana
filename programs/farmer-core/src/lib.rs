@@ -1,4 +1,6 @@
 #![allow(unexpected_cfgs)]
+// An Anchor instruction's argument list is its ABI, so clippy's arity limit does not apply.
+#![allow(clippy::too_many_arguments)]
 
 use crate::instructions::*;
 use crate::states::{FulfillmentMode, ZipPrefix};
@@ -169,5 +171,10 @@ pub mod farmer_core {
     /// Warehouse operator completes the order: escrow released to farmer and logistics
     pub fn complete_order(ctx: Context<CompleteOrder>) -> Result<()> {
         instructions::complete_order::complete_order(ctx)
+    }
+
+    /// Anyone expires a pre-transit order past expires_at: full refund, stock restored
+    pub fn expire_order(ctx: Context<ExpireOrder>) -> Result<()> {
+        instructions::expire_order::expire_order(ctx)
     }
 }

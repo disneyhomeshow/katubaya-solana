@@ -1,10 +1,10 @@
 import { expect } from "chai";
 import * as anchor from "@solana/web3.js";
-import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import { TOKEN_PROGRAM_ID, mintTo } from "@solana/spl-token";
 import {
-  program, fails, fund, events, logisticsWallet, createWarehouse, approvedFarmer, publishOffer,
-  confirmedCustomer, createOrder, market, markInTransit, readyOrder, ataOf, tokenBalance, escrowPDA,
-  testMint, SUBTOTAL, SERVICE_FEE,
+  program, provider, payer, fails, fund, events, logisticsWallet, createWarehouse, approvedFarmer,
+  publishOffer, confirmedCustomer, createOrder, market, markInTransit, readyOrder, ataOf, tokenBalance,
+  escrowPDA, escrowClosed, testMint, SUBTOTAL, SERVICE_FEE,
 } from "./helpers";
 
 describe("complete_order", () => {
@@ -55,7 +55,7 @@ describe("complete_order", () => {
 
     expect(await tokenBalance(farmerAta)).to.equal(b.farmer + SUBTOTAL - SERVICE_FEE);
     expect(await tokenBalance(logisticsAta)).to.equal(b.logistics + SERVICE_FEE);
-    expect(await tokenBalance(escrowPDA(order))).to.equal(0);
+    expect(await escrowClosed(order)).to.be.true;
     expect((await program.account.order.fetch(order)).status).to.deep.equal({ fulfilled: {} });
   });
 
@@ -66,7 +66,19 @@ describe("complete_order", () => {
     await complete(order).rpc();
     expect(await tokenBalance(farmerAta)).to.equal(b.farmer + SUBTOTAL - SERVICE_FEE);
     expect(await tokenBalance(logisticsAta)).to.equal(b.logistics + SERVICE_FEE + 500_000);
-    expect(await tokenBalance(escrowPDA(order))).to.equal(0);
+    expect(await escrowClosed(order)).to.be.true;
+  });
+
+  // The payout is the escrow remainder, not service_fee + delivery_fee: a stray token sent to the
+  // escrow PDA is swept to logistics, which is what lets close_account always see a zero balance.
+  it("sweeps a stray token in the escrow to logistics", async () => {
+    const order = await inTransitPickup();
+    await mintTo(provider.connection, payer, testMint(), escrowPDA(order), payer, 1);
+    const b = await balances();
+    const evs = await events(complete(order));
+    expect(evs[0].data.logisticsPayout.toNumber()).to.equal(SERVICE_FEE + 1);
+    expect(await tokenBalance(logisticsAta)).to.equal(b.logistics + SERVICE_FEE + 1);
+    expect(await escrowClosed(order)).to.be.true;
   });
 
   it("pays the farmer everything when the warehouse fee is zero", async () => {
@@ -102,9 +114,11 @@ describe("complete_order", () => {
     expect(await fails(complete(await inTransitPickup(), { logisticsAta: farmerAta }).rpc())).to.equal("LogisticsTokenAccountMismatch");
   });
 
-  it("rejects an order already fulfilled", async () => {
+  // Completion closes the escrow, so a replay cannot even resolve the accounts. The InTransit
+  // gate still answers for orders whose escrow is alive ("rejects an order that is not in transit").
+  it("rejects a second completion: the escrow is gone", async () => {
     const order = await inTransitPickup();
     await complete(order).rpc();
-    expect(await fails(complete(order).rpc())).to.equal("InvalidOrderStatus");
+    expect(await fails(complete(order).rpc())).to.equal("AccountNotInitialized");
   });
 });

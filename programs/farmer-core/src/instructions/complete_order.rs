@@ -15,6 +15,7 @@ pub struct CompleteOrder<'info> {
         mut,
         has_one = warehouse @ FarmerCoreError::WarehouseMismatch,
         has_one = mint @ FarmerCoreError::MintMismatch,
+        has_one = customer @ FarmerCoreError::UnauthorizedCustomer,
         constraint = order.status == OrderStatus::InTransit @ FarmerCoreError::InvalidOrderStatus
     )]
     pub order: Account<'info, Order>,
@@ -42,6 +43,10 @@ pub struct CompleteOrder<'info> {
     #[account(mut, seeds = [SEED_ESCROW, order.key().as_ref()], bump = order.escrow_bump)]
     pub escrow: InterfaceAccount<'info, TokenAccount>,
 
+    /// Escrow rent goes back to the customer, who paid it at `create_order`.
+    #[account(mut)]
+    pub customer: SystemAccount<'info>,
+
     pub operator: Signer<'info>,
 
     pub token_program: Interface<'info, TokenInterface>,
@@ -54,9 +59,13 @@ pub fn complete_order(ctx: Context<CompleteOrder>) -> Result<()> {
         .subtotal_minor
         .checked_sub(order.service_fee_minor)
         .ok_or(FarmerCoreError::MathOverflow)?;
-    let logistics_payout = order
-        .service_fee_minor
-        .checked_add(order.delivery_fee_minor)
+    // Whatever the escrow holds beyond the farmer's share: the service and delivery fees, plus any
+    // stray tokens sent to the PDA, so the account always ends at zero and can be closed.
+    let logistics_payout = ctx
+        .accounts
+        .escrow
+        .amount
+        .checked_sub(farmer_payout)
         .ok_or(FarmerCoreError::MathOverflow)?;
 
     escrow::withdraw(
@@ -76,6 +85,13 @@ pub fn complete_order(ctx: Context<CompleteOrder>) -> Result<()> {
         &order_key,
         order.escrow_bump,
         logistics_payout,
+    )?;
+    escrow::close(
+        &ctx.accounts.token_program,
+        &ctx.accounts.escrow,
+        &ctx.accounts.customer.to_account_info(),
+        &order_key,
+        order.escrow_bump,
     )?;
 
     let order = &mut ctx.accounts.order;

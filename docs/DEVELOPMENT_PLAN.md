@@ -235,11 +235,13 @@ Deliver:
 
 ### M6 — Timeouts & Hardening
 Deliver:
-- `expire_order`
-- More invariants tests:
-  - stock restoration always correct
-  - no completion without IN_TRANSIT
-  - no cancel after IN_TRANSIT
+- `expire_order` (permissionless, past `expires_at`), error `OrderNotExpired`, event `OrderExpired`
+- Escrow closed on every terminal path, rent back to the customer; `complete_order` pays logistics the
+  escrow remainder so the account always reaches zero
+- Invariants tests: stock restoration, no completion without IN_TRANSIT, no cancel after IN_TRANSIT —
+  covered since M4/M5 by `refuse_delivery.ts`, `reject_delivery_fee.ts`, `complete_order.ts` and
+  `mark_in_transit.ts`; M6 adds the expiry gates plus a litesvm clock test for the refund path
+- One end-to-end run on a Token-2022 mint (`tests/token2022.ts`)
 - Compute budget review + constraints tightening
 
 ### M7 — Optional Pack Pointer (Integrity Anchor)

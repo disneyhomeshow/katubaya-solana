@@ -78,14 +78,18 @@ fields are written: `order_id`, `qty`, `fulfillment_mode` from the args; `offer`
 clock; `expires_at` = `created_at` + `EXPIRY_PICKUP_SECS` (72 h) or + `EXPIRY_PENDING_QUOTE_SECS` (6 h); `escrow_bump` = the
 escrow PDA bump.
 
-Created: escrow token account (seeds `["escrow", order_pubkey]`, plain SPL token account, 165 bytes), `mint` = the offer's mint,
-authority = itself. After the instruction it holds exactly `subtotal_minor`.
+Created: escrow token account (seeds `["escrow", order_pubkey]`, 165 bytes, owned by the `token_program` passed in, so SPL
+Token or Token-2022 following the mint), `mint` = the offer's mint, authority = itself. After the instruction it holds exactly
+`subtotal_minor`. It is opened only here and closed by each terminal path (`reject_delivery_fee`, `refuse_delivery`,
+`expire_order`, `complete_order`), so an order's escrow exists only while the order is live and a replayed terminal call fails
+on account resolution (`AccountNotInitialized`), not on the status gate.
 
 Mutated: `LotOffer.qty_remaining` decremented by `qty` (`checked_sub`). No other offer field changes.
 
 Token balances: `subtotal_minor` moves from `customer_token_account` to the escrow, signed by the customer. The service fee is
 only recorded; it is paid out of the escrowed subtotal at completion (README section 7). Rent for both new accounts is paid in
-SOL by the customer; the escrow rent is not reclaimed on refund in M4 (no `close`).
+SOL by the customer; the `Order` PDA keeps its rent, the escrow's comes back to `order.customer` (the address stored here, not
+the caller) when a terminal instruction closes it.
 
 Read: `ProgramConfig` (seeds `["config"]`) for `paused`; `Warehouse` for `fee_bps`; `WarehouseCustomer` (seeds
 `["wcustomer", offer.warehouse, customer]`) for `status`; `Mint` for `decimals` and the `MintMismatch` check.
@@ -100,18 +104,23 @@ Read: `ProgramConfig` (seeds `["config"]`) for `paused`; `Warehouse` for `fee_bp
   The product is done in `u128` so `subtotal * fee_bps` cannot overflow; the cast back to `u64` is safe because
   `fee_bps <= MAX_FEE_BPS` makes the fee at most the subtotal.
 - **The escrow is a token account that is its own authority**, at `["escrow", order]`, and `escrow_bump` is stored on the
-  order (README 5.8) so `reject_delivery_fee`, `refuse_delivery` and the M5 payout sign withdrawals without re-deriving.
+  order (README 5.8) so `reject_delivery_fee`, `refuse_delivery`, `expire_order` and `complete_order` sign both their
+  withdrawals and the final `escrow::close` with `[SEED_ESCROW, order, escrow_bump]`, without re-deriving.
 - **`warehouse_customer` is derived from `offer.warehouse`, not from the `warehouse` account passed in:** a customer confirmed
   by another warehouse cannot buy here, whatever accounts the client supplies. `warehouse` is loaded only for `fee_bps` and
   tied to the offer by `has_one` (`WarehouseMismatch`, reused from the Farmer section).
 - **`mint` is an account, constrained to `offer.mint`, and copied into the order** because `transfer_checked` needs the mint and
   its decimals (README 5.8). The allowlist is not re-checked: `publish_offer` enforced it once (README 12).
-- **`transfer_checked` through `token_interface`** so SPL Token and Token-2022 both work (README 11); the tests use classic
-  SPL Token only.
+- **`transfer_checked` through `token_interface`** so SPL Token and Token-2022 both work (README 11); `tests/token2022.ts`
+  runs one pickup order end to end on a Token-2022 mint, the rest of the suite on classic SPL Token. A transfer-fee mint is
+  incompatible (it withholds fees on the escrow, breaking the payout sums and the close); `config.allowed_mints`, set once at
+  `init_config`, is the only control — the program does not inspect mint extensions.
 - **Customer pays rent for both accounts** (`payer = customer`); the escrow is created here even though a delivery order may
-  still be canceled, so a canceled or refused order leaves a 165-byte account behind in M4.
+  still be canceled, and every terminal path returns that rent to the customer, so a canceled, refused, expired or fulfilled
+  order leaves only the `Order` PDA behind.
 - **Delivery orders start at `PendingDeliveryQuote` with `delivery_fee_minor = 0`** and the short 6 h window; pickup orders are
-  immediately `EscrowedPickup` with 72 h. `expires_at` is stored but not enforced until `expire_order` (M6).
+  immediately `EscrowedPickup` with 72 h. The window set here is only the first one: `quote_delivery_fee` rewrites `expires_at`
+  to `now + EXPIRY_QUOTED_SECS` (6 h) and `accept_delivery_fee` to `now + EXPIRY_PICKUP_SECS` (72 h). Only `expire_order` reads it.
 - **`require!` only on `qty` and the offer expiry**, in handler order; both compare against values the constraints cannot
   see (an arg and the clock). `now` is read once and reused for `created_at` and `expires_at`.
 - **Pause gate on `config`:** market instruction. The test pauses, asserts and unpauses in `finally` (singleton config).
@@ -125,5 +134,6 @@ Read: `ProgramConfig` (seeds `["config"]`) for `paused`; `Warehouse` for `fee_bp
 - `programs/farmer-core/src/events.rs`
 - `programs/farmer-core/src/lib.rs`
 - `tests/create_order.ts`
+- `tests/token2022.ts` (one pickup order created on a Token-2022 mint)
 - `tests/helpers.ts`
 - `tests/flow_order.ts`

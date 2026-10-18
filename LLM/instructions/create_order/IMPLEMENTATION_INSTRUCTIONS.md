@@ -5,12 +5,13 @@
 | File | Role |
 |---|---|
 | `programs/farmer-core/src/instructions/create_order.rs` | `CreateOrder` accounts struct and handler |
-| `programs/farmer-core/src/escrow.rs` | `deposit` (used here) and `withdraw`; the only token CPIs, both `transfer_checked` via `anchor_spl::token_interface` |
+| `programs/farmer-core/src/escrow.rs` | `deposit` (used here), `withdraw` and `close`; the only token CPIs, all through `anchor_spl::token_interface` |
 | `programs/farmer-core/src/states.rs` | `Order`, `FulfillmentMode`, `OrderStatus`, `SEED_ORDER`, `SEED_ESCROW`, `SEED_WCUSTOMER`, `SEED_CONFIG`, `MAX_FEE_BPS`, `EXPIRY_PICKUP_SECS`, `EXPIRY_PENDING_QUOTE_SECS` |
 | `programs/farmer-core/src/errors.rs` | `FarmerCoreError::{ProgramPaused, WarehouseMismatch, OfferInactive, CustomerNotConfirmed, MintMismatch, InvalidQuantity, OfferExpired, MathOverflow, InsufficientStock}` |
 | `programs/farmer-core/src/events.rs` | `OrderCreated` |
 | `tests/create_order.ts` | Pickup happy path (event, balances, stock, every field), delivery status/expiry, twelve failure cases |
-| `tests/helpers.ts` | `market`, `confirmedCustomer`, `fundTokens`, `tokenBalance`, `orderPDA`, `escrowPDA`, `createOrderTx`, `createOrder`, `testMint`, `SUBTOTAL`, `SERVICE_FEE`, `H6`, `H72` |
+| `tests/token2022.ts` | One pickup order created, transported and completed on the Token-2022 mint of `allowedMints[1]` |
+| `tests/helpers.ts` | `market`, `confirmedCustomer`, `fundTokens`, `tokenBalance`, `orderPDA`, `escrowPDA`, `createOrderTx`, `createOrder`, `testMint`, `token2022Mint`, `SUBTOTAL`, `SERVICE_FEE`, `H6`, `H72` |
 | `tests/flow_order.ts` | Delivery flow: create (delivery) -> quote -> accept |
 | `target/idl/farmer_core.json` | Generated IDL (PDA seeds incl. the `offer.warehouse` path, `FulfillmentMode`, error codes, event) |
 
@@ -78,8 +79,9 @@ pub struct CreateOrder<'info> {
 }
 ```
 
-Client: `offer`, `warehouse`, `mint`, `customerTokenAccount` (the customer's ATA in tests), `customer` and `tokenProgram` (`TOKEN_PROGRAM_ID`;
-an `Interface` has no fixed address) go through `.accountsPartial`, plus `.signers([customer])`. The IDL resolves `config` (const seeds),
+Client: `offer`, `warehouse`, `mint`, `customerTokenAccount` (the customer's ATA in tests), `customer` and `tokenProgram` (the program that owns
+the mint: `TOKEN_PROGRAM_ID`, or `TOKEN_2022_PROGRAM_ID` in `tests/token2022.ts`; an `Interface` has no fixed address and the IDL carries no
+address for it) go through `.accountsPartial`, plus `.signers([customer])`. The IDL resolves `config` (const seeds),
 `warehouse_customer` (the TS resolver fetches `offer` for the `offer.warehouse` seed), `order` (seeds incl. the `order_id` arg), `escrow`
 (from the resolved `order`) and `system_program`; `warehouse` carries `relations = ["offer"]` in the IDL but the tests pass it explicitly.
 
@@ -98,8 +100,9 @@ an `Interface` has no fixed address) go through `.accountsPartial`, plus `.signe
 `escrow_bump: u8`), 8 + INIT_SPACE = 227 bytes (8 + 32 * 5 + 8 * 4 + 1 + 1 + 8 + 8 + 1 = 219), seeds `["order", offer, customer, order_id u64 LE]`.
 `FulfillmentMode { Pickup, Delivery }`; `OrderStatus { EscrowedPickup, PendingDeliveryQuote, DeliveryQuoted, EscrowedReady, InTransit,
 Fulfilled, Refused, Canceled, Expired }`. TS decodes the `u64`/`i64` fields as `BN`, enums as `{ pickup: {} }` / `{ escrowedPickup: {} }`.
-Escrow: plain SPL token account (165 bytes) at `["escrow", order]`, mint `offer.mint`, owner itself; withdrawals later sign with
-`[SEED_ESCROW, order, order.escrow_bump]`.
+Escrow: 165-byte token account at `["escrow", order]`, created under the `token_program` passed in (SPL Token or Token-2022, per `token::token_program`),
+mint `offer.mint`, authority itself, alive only while the order is; the later withdrawals and the `escrow::close` each terminal path runs sign with
+`[SEED_ESCROW, order, order.escrow_bump]`, its rent going to `order.customer`.
 
 ## Errors
 
@@ -127,9 +130,9 @@ Escrow: plain SPL token account (165 bytes) at `["escrow", order]`, mint `offer.
 
 ## Client call
 
-`createOrderTx(buyer, offer, warehouse, id, qty, mode, mint = testMint())` in `tests/helpers.ts` builds
+`createOrderTx(buyer, offer, warehouse, id, qty, mode, mint = testMint(), tokenProgram = TOKEN_PROGRAM_ID)` in `tests/helpers.ts` builds
 `program.methods.createOrder(new BN(id), new BN(qty), { pickup: {} } | { delivery: {} }).accountsPartial({ offer, warehouse, mint,
-customerTokenAccount: buyer.ata, customer: buyer.customer.publicKey, tokenProgram: TOKEN_PROGRAM_ID }).signers([buyer.customer])`;
+customerTokenAccount: buyer.ata, customer: buyer.customer.publicKey, tokenProgram }).signers([buyer.customer])`;
 `Buyer = { customer: Keypair; ata: PublicKey }`. Fixture: `m = await market()` (warehouse `fee_bps` 250, offer qty 500 at 1_000_000, customer
 funded with 100_000_000); the test's `create(mode, overrides, id)` defaults to qty 10, so `SUBTOTAL = 10_000_000`, `SERVICE_FEE = 250_000`.
 
@@ -141,4 +144,4 @@ funded with 100_000_000); the test's `create(mode, overrides, id)` defaults to q
   (division truncates); `qty_remaining.checked_sub(qty)` -> `InsufficientStock`; `now.checked_add(window)` -> `MathOverflow`. `now` is read once, after the `qty` check.
 - Token CPI: `escrow::deposit` = `transfer_checked(subtotal, mint.decimals)` with `authority = customer` (`CpiContext::new`); nothing is PDA-signed here.
   It runs after the `Order` and `LotOffer` writes, so an SPL failure (`0x1`) reverts the stock decrement too.
-- Untested: `MathOverflow` (all three), offers with `expires_at = None`, `fee_bps = 0`, Token-2022 mints, token-account constraint failures, missing signer.
+- Untested: `MathOverflow` (all three), offers with `expires_at = None`, `fee_bps = 0`, token-account constraint failures, missing signer. Token-2022 is covered by `tests/token2022.ts` (one pickup order end to end); a transfer-fee mint would break the payout sums and the escrow close, and only `allowed_mints` excludes it.

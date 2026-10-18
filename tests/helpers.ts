@@ -2,6 +2,7 @@ import * as anchor from "@coral-xyz/anchor";
 import { Program } from "@coral-xyz/anchor";
 import { FarmerCore } from "../target/types/farmer_core";
 import {
+  TOKEN_2022_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
   createMint,
   getAccount,
@@ -47,6 +48,8 @@ export const DECIMALS = 6;
 /** Real SPL mint(s) created in the root `before` and written to config.allowed_mints. */
 export const allowedMints: anchor.web3.PublicKey[] = [];
 export const testMint = () => allowedMints[0];
+/** Second allowed mint, on Token-2022: the program reaches both through `token_interface`. */
+export const token2022Mint = () => allowedMints[1];
 
 // ProgramConfig is a singleton: create it once, before any file's tests.
 before(async () => {
@@ -56,6 +59,9 @@ before(async () => {
     return;
   }
   allowedMints.push(await createMint(provider.connection, payer, payer.publicKey, null, DECIMALS));
+  allowedMints.push(
+    await createMint(provider.connection, payer, payer.publicKey, null, DECIMALS, undefined, undefined, TOKEN_2022_PROGRAM_ID)
+  );
   await program.methods.initConfig(logisticsWallet, false, allowedMints).rpc();
 });
 
@@ -161,8 +167,13 @@ export const fundTokens = async (owner: anchor.web3.Keypair, amount: number) => 
   if (amount > 0) await mintTo(provider.connection, payer, testMint(), ata.address, payer, amount);
   return ata.address;
 };
-export const tokenBalance = async (account: anchor.web3.PublicKey) =>
-  Number((await getAccount(provider.connection, account)).amount);
+export const tokenBalance = async (account: anchor.web3.PublicKey, tokenProgram = TOKEN_PROGRAM_ID) =>
+  Number((await getAccount(provider.connection, account, undefined, tokenProgram)).amount);
+
+/** True once the order's escrow token account has been closed and its rent returned. */
+export const escrowClosed = async (order: anchor.web3.PublicKey) =>
+  (await provider.connection.getAccountInfo(escrowPDA(order))) === null;
+export const lamports = (account: anchor.web3.PublicKey) => provider.connection.getBalance(account);
 
 /** Customer registered, confirmed by `operator`'s warehouse, with `tokens` minor units in their ATA. */
 export const confirmedCustomer = async (
@@ -191,7 +202,8 @@ export const createOrderTx = (
   id: number,
   qty: number,
   mode: Mode,
-  mint = testMint()
+  mint = testMint(),
+  tokenProgram = TOKEN_PROGRAM_ID
 ) =>
   program.methods
     .createOrder(new BN(id), new BN(qty), mode === "pickup" ? { pickup: {} } : { delivery: {} })
@@ -201,7 +213,7 @@ export const createOrderTx = (
       mint,
       customerTokenAccount: buyer.ata,
       customer: buyer.customer.publicKey,
-      tokenProgram: TOKEN_PROGRAM_ID,
+      tokenProgram,
     })
     .signers([buyer.customer]);
 
@@ -233,8 +245,16 @@ export const H6 = 6 * 60 * 60;
 export const H72 = 72 * 60 * 60;
 
 /** Token account of `owner` for the test mint (created if missing; `owner` may be any pubkey). */
-export const ataOf = async (owner: anchor.web3.PublicKey) =>
-  (await getOrCreateAssociatedTokenAccount(provider.connection, payer, testMint(), owner)).address;
+export const ataOf = async (
+  owner: anchor.web3.PublicKey,
+  mint = testMint(),
+  tokenProgram = TOKEN_PROGRAM_ID
+) =>
+  (
+    await getOrCreateAssociatedTokenAccount(
+      provider.connection, payer, mint, owner, false, undefined, undefined, tokenProgram
+    )
+  ).address;
 
 type Market = Awaited<ReturnType<typeof market>>;
 

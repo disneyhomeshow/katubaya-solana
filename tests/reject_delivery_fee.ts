@@ -2,7 +2,7 @@ import { expect } from "chai";
 import * as anchor from "@solana/web3.js";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import {
-  program, BN, fails, events, createOrder, market, confirmedCustomer, publishOffer, tokenBalance, escrowPDA,
+  program, BN, fails, events, createOrder, market, confirmedCustomer, publishOffer, tokenBalance, escrowClosed,
   testMint, Buyer,
 } from "./helpers";
 
@@ -44,7 +44,7 @@ describe("reject_delivery_fee", () => {
     expect(evs.map((e) => e.name)).to.deep.equal(["deliveryFeeRejected"]);
     expect(evs[0].data.order.equals(order)).to.be.true;
     expect(await tokenBalance(m.buyer.ata)).to.equal(balance);
-    expect(await tokenBalance(escrowPDA(order))).to.equal(0);
+    expect(await escrowClosed(order)).to.be.true;
     expect((await program.account.lotOffer.fetch(m.offer)).qtyRemaining.toNumber()).to.equal(stock);
     expect((await program.account.order.fetch(order)).status).to.deep.equal({ canceled: {} });
   });

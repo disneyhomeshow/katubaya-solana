@@ -13,6 +13,7 @@ pub struct RefuseDelivery<'info> {
         has_one = warehouse @ FarmerCoreError::WarehouseMismatch,
         has_one = offer @ FarmerCoreError::OfferMismatch,
         has_one = mint @ FarmerCoreError::MintMismatch,
+        has_one = customer @ FarmerCoreError::UnauthorizedCustomer,
         constraint = order.fulfillment_mode == FulfillmentMode::Delivery @ FarmerCoreError::NotDeliveryOrder,
         constraint = matches!(
             order.status,
@@ -40,6 +41,10 @@ pub struct RefuseDelivery<'info> {
     #[account(mut, seeds = [SEED_ESCROW, order.key().as_ref()], bump = order.escrow_bump)]
     pub escrow: InterfaceAccount<'info, TokenAccount>,
 
+    /// Escrow rent goes back to the customer, who paid it at `create_order`.
+    #[account(mut)]
+    pub customer: SystemAccount<'info>,
+
     pub operator: Signer<'info>,
 
     pub token_program: Interface<'info, TokenInterface>,
@@ -55,6 +60,13 @@ pub fn refuse_delivery(ctx: Context<RefuseDelivery>) -> Result<()> {
         &order_key,
         ctx.accounts.order.escrow_bump,
         ctx.accounts.escrow.amount,
+    )?;
+    escrow::close(
+        &ctx.accounts.token_program,
+        &ctx.accounts.escrow,
+        &ctx.accounts.customer.to_account_info(),
+        &order_key,
+        ctx.accounts.order.escrow_bump,
     )?;
 
     let offer = &mut ctx.accounts.offer;

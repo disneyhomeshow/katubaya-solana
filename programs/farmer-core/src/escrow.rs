@@ -1,9 +1,11 @@
 use crate::states::SEED_ESCROW;
 use anchor_lang::prelude::*;
-use anchor_spl::token_interface::{self, Mint, TokenAccount, TokenInterface, TransferChecked};
+use anchor_spl::token_interface::{
+    self, CloseAccount, Mint, TokenAccount, TokenInterface, TransferChecked,
+};
 
 // The escrow is a token account at PDA ["escrow", order] that is its own authority:
-// deposits are signed by the customer, withdrawals by the program with the PDA seeds.
+// deposits are signed by the customer, withdrawals and the close by the program with the PDA seeds.
 
 pub fn deposit<'info>(
     token_program: &Interface<'info, TokenInterface>,
@@ -52,4 +54,24 @@ pub fn withdraw<'info>(
         amount,
         mint.decimals,
     )
+}
+
+/// Terminal paths close the emptied escrow and return its rent to `destination` (the customer).
+pub fn close<'info>(
+    token_program: &Interface<'info, TokenInterface>,
+    escrow: &InterfaceAccount<'info, TokenAccount>,
+    destination: &AccountInfo<'info>,
+    order: &Pubkey,
+    bump: u8,
+) -> Result<()> {
+    let seeds: &[&[u8]] = &[SEED_ESCROW, order.as_ref(), &[bump]];
+    token_interface::close_account(CpiContext::new_with_signer(
+        token_program.to_account_info(),
+        CloseAccount {
+            account: escrow.to_account_info(),
+            destination: destination.clone(),
+            authority: escrow.to_account_info(),
+        },
+        &[seeds],
+    ))
 }

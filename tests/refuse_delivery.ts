@@ -2,7 +2,8 @@ import { expect } from "chai";
 import * as anchor from "@solana/web3.js";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import {
-  program, BN, fails, fund, events, createOrder, market, tokenBalance, escrowPDA, fundTokens, testMint,
+  program, BN, fails, fund, events, createOrder, market, tokenBalance, escrowPDA, escrowClosed, lamports,
+  fundTokens, testMint,
 } from "./helpers";
 
 describe("refuse_delivery", () => {
@@ -50,7 +51,7 @@ describe("refuse_delivery", () => {
   });
   const expectRestored = async (order: anchor.PublicKey, s: { balance: number; stock: number }) => {
     expect(await tokenBalance(m.buyer.ata)).to.equal(s.balance);
-    expect(await tokenBalance(escrowPDA(order))).to.equal(0);
+    expect(await escrowClosed(order)).to.be.true;
     expect((await program.account.lotOffer.fetch(m.offer)).qtyRemaining.toNumber()).to.equal(s.stock);
     expect((await program.account.order.fetch(order)).status).to.deep.equal({ refused: {} });
   };
@@ -58,10 +59,13 @@ describe("refuse_delivery", () => {
   it("refunds a pending order, restores stock and emits OrderRefused", async () => {
     const s = await snapshot();
     const order = await delivery();
+    const rent = await lamports(escrowPDA(order));
+    const customerSol = await lamports(m.buyer.customer.publicKey);
     const evs = await events(refuse(order));
     expect(evs.map((e) => e.name)).to.deep.equal(["orderRefused"]);
     expect(evs[0].data.order.equals(order)).to.be.true;
     await expectRestored(order, s);
+    expect(await lamports(m.buyer.customer.publicKey)).to.equal(customerSol + rent);
   });
 
   it("refunds a quoted order", async () => {
@@ -96,9 +100,11 @@ describe("refuse_delivery", () => {
     expect(await fails(refuse(await delivery(), m.operator, strangerAta).rpc())).to.equal("UnauthorizedCustomer");
   });
 
-  it("rejects an order that is already refused", async () => {
+  // Refusal closes the escrow, so a replay cannot even resolve the accounts; the status gate itself
+  // is covered in mark_in_transit.ts, where the escrow is still alive.
+  it("rejects a second refusal: the escrow is gone", async () => {
     const order = await delivery();
     await refuse(order).rpc();
-    expect(await fails(refuse(order).rpc())).to.equal("InvalidOrderStatus");
+    expect(await fails(refuse(order).rpc())).to.equal("AccountNotInitialized");
   });
 });

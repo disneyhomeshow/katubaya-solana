@@ -88,4 +88,8 @@ pub enum FarmerCoreError {
     FarmerTokenAccountMismatch,
     #[msg("Logistics token account is not owned by config.logistics_wallet")]
     LogisticsTokenAccountMismatch,
+
+    // ---- Timeouts
+    #[msg("Order has not reached expires_at yet")]
+    OrderNotExpired,
 }

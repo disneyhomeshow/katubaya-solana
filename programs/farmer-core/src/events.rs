@@ -88,3 +88,8 @@ pub struct OrderCompleted {
     pub farmer_payout: u64,
     pub logistics_payout: u64,
 }
+
+#[event]
+pub struct OrderExpired {
+    pub order: Pubkey,
+}

@@ -114,9 +114,10 @@ programs/farmer-core/src/
 - **Purpose**: the only place that issues token CPIs for orders
 - **Rules**:
   - The escrow is a token account at PDA `[SEED_ESCROW, order]` that is its own authority (`token::authority = escrow` at init)
-  - `deposit(...)` moves customer -> escrow, signed by the customer; `withdraw(...)` moves escrow -> destination, signed with the seeds and `order.escrow_bump`
-  - Always `transfer_checked` through `anchor_spl::token_interface`, so SPL Token and Token-2022 both work
+  - `deposit(...)` moves customer -> escrow, signed by the customer; `withdraw(...)` moves escrow -> destination, and `close(...)` closes the emptied account, both signed with the seeds and `order.escrow_bump`
+  - Always `transfer_checked` through `anchor_spl::token_interface`, so SPL Token and Token-2022 both work (never a mint that charges a transfer fee: see README section 11)
   - Refunds move `escrow.amount` (the real balance), never a recomputed sum
+  - Every terminal path drains the escrow to zero and then closes it, returning the rent to `order.customer`; `close(...)` takes the destination as an `AccountInfo`, so a `Signer` and a `SystemAccount` both fit
 
 #### `instructions/*.rs`
 - **Purpose**: One file per instruction, containing both the accounts struct and implementation
@@ -227,9 +228,10 @@ programs/farmer-core/src/
 
 - **One test file per instruction**: `tests/instruction_name.ts`, one `describe`, a `before` that builds the fixtures, one `it` per behavior
 - **`ProgramConfig` is a singleton**: the root `before` in `tests/helpers.ts` creates it once; no test file calls `init_config` for setup
-- **Shared helpers** in `tests/helpers.ts`: `program`, `provider`, `payer`, PDA derivers, `fund()`, `freshId()`, `fails(promise)`, `events(builder)`, `setPaused(bool)`, token helpers (`testMint()`, `fundTokens(owner, amount)`, `tokenBalance(account)`), one fixture per entity (`createWarehouse`, `registerFarmer`, `approvedFarmer`, `registerCustomer`, `requestConfirmation`, `confirmedCustomer`, `publishOffer` / `publishOfferTx`, `createOrder` / `createOrderTx`, `quoteFee`, `acceptFee`, `readyOrder`, `markInTransit`, `ataOf(owner)`) and `market()`, which builds a whole warehouse-farmer-offer-customer graph. The root `before` also creates the real SPL mint that goes into `config.allowed_mints`. Read the file before adding a fixture
+- **Shared helpers** in `tests/helpers.ts`: `program`, `provider`, `payer`, PDA derivers, `fund()`, `freshId()`, `fails(promise)`, `events(builder)`, `setPaused(bool)`, token helpers (`testMint()`, `token2022Mint()`, `fundTokens(owner, amount)`, `tokenBalance(account, tokenProgram?)`, `escrowClosed(order)`, `lamports(account)`), one fixture per entity (`createWarehouse`, `registerFarmer`, `approvedFarmer`, `registerCustomer`, `requestConfirmation`, `confirmedCustomer`, `publishOffer` / `publishOfferTx`, `createOrder` / `createOrderTx`, `quoteFee`, `acceptFee`, `readyOrder`, `markInTransit`, `ataOf(owner, mint?, tokenProgram?)`) and `market()`, which builds a whole warehouse-farmer-offer-customer graph. The root `before` also creates the two real mints that go into `config.allowed_mints`, one on each token program. Read the file before adding a fixture
 - **Fixtures use fresh keypairs and ids** per file so files never collide on PDAs
 - **Account resolution**: let Anchor resolve PDAs, the provider wallet and programs from the IDL; pass only what it cannot derive (`.accountsPartial` to override a signer)
+- **Clock-dependent tests run on litesvm**, not the validator, which cannot be warped: `tests/expire_order_clock.ts` loads `target/deploy/farmer_core.so`, injects its fixtures with `svm.setAccount` and moves time with `getClock()` / `setClock()`. It builds instructions from the raw IDL through `BorshCoder` — snake_case instruction names, PascalCase account names, PascalCase enum variants, `await` on `accounts.encode` — and calls `svm.expireBlockhash()` between two otherwise identical sends, which would else be rejected as `AlreadyProcessed`. Everything that does not need a clock stays on `anchor test`
 - **Flow test**: lands together with `create_order` (M4) as `tests/flow_order.ts`: confirm_customer → publish_offer → create_order → quote_delivery_fee → accept_delivery_fee; M5 extends it through mark_in_transit → complete_order
 
 ### Test Coverage Requirements
@@ -483,6 +485,21 @@ cargo update -p blake3 --precise 1.5.5          # 1.8.x pulls digest 0.11 / bloc
 cargo update -p zeroize_derive --precise 1.4.2  # 1.5.0 is edition 2024
 ```
 Never run a bare `cargo update`; it reintroduces them. To find new offenders, scan every locked crate's manifest for `edition = "2024"` or `rust-version` above 1.84.1.
+
+#### `require is not defined in ES module scope` in a test file
+
+**Cause**: mocha loads `tests/*.ts` as ES modules, so `require(...)` is unavailable. Read JSON with
+`readFileSync` + `JSON.parse` and import everything else.
+
+**Related**: `import { BN } from "@coral-xyz/anchor"` resolves to `undefined` under that loader
+(`anchor.BN is not a constructor`). Take `BN` from `bn.js`, or from the `BN` re-export in `tests/helpers.ts`.
+
+#### `Cannot find name 'CryptoKeyPair'` from a manual `tsc --noEmit`
+
+**Cause**: `litesvm` pulls in `@solana/kit` type definitions that need DOM libs. `ts-mocha` is
+transpile-only so `anchor test` never sees them; a hand-run `tsc` does.
+
+**Solution**: `tsconfig.json` sets `skipLibCheck: true`; keep `--skipLibCheck` in any ad-hoc `tsc` call.
 
 #### `Test validator does not look started`
 

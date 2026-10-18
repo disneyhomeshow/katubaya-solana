@@ -28,6 +28,8 @@ pub struct RejectDeliveryFee<'info> {
     #[account(mut, seeds = [SEED_ESCROW, order.key().as_ref()], bump = order.escrow_bump)]
     pub escrow: InterfaceAccount<'info, TokenAccount>,
 
+    /// Also the escrow rent destination, so it must be writable.
+    #[account(mut)]
     pub customer: Signer<'info>,
 
     pub token_program: Interface<'info, TokenInterface>,
@@ -43,6 +45,13 @@ pub fn reject_delivery_fee(ctx: Context<RejectDeliveryFee>) -> Result<()> {
         &order_key,
         ctx.accounts.order.escrow_bump,
         ctx.accounts.escrow.amount,
+    )?;
+    escrow::close(
+        &ctx.accounts.token_program,
+        &ctx.accounts.escrow,
+        &ctx.accounts.customer.to_account_info(),
+        &order_key,
+        ctx.accounts.order.escrow_bump,
     )?;
 
     let offer = &mut ctx.accounts.offer;
