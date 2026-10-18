@@ -40,7 +40,7 @@ Docs
 - Payout accounts must exist: no ATA creation, no associated-token program, no payer; clients prepend `createAssociatedTokenAccountIdempotent`.
 - Zero amounts go through `transfer_checked` unconditionally (no branch); proven by the `fee_bps` 0 test.
 - All three CPIs signed by the program with `[SEED_ESCROW, order, order.escrow_bump]`, `mint.decimals` from the `has_one`-pinned `mint`.
-- No pause gate, no `expires_at` check, no stock change; 36_822 CU measured, so no compute-budget bump.
+- No pause gate, no `expires_at` check, no stock change; ~37k CU measured, so no compute-budget bump.
 - `OrderCompleted` emitted after the status write with every amount (README 9), for the indexer and katubaya inventory reconciliation.
 - Gates are `#[account]` constraints only; the handler has no `require!` and no args.
 

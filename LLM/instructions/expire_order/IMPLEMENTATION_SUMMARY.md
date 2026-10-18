@@ -7,7 +7,7 @@ Program
 - `programs/farmer-core/src/escrow.rs` (modified): `close(token_program, escrow, destination, order, bump)` added next to `deposit` / `withdraw`; `close_account` via `CpiContext::new_with_signer` with `[SEED_ESCROW, order, bump]`, destination as `&AccountInfo` so a `Signer` and a `SystemAccount` both fit
 - `programs/farmer-core/src/instructions/mod.rs` (modified): `pub mod expire_order; pub use expire_order::*;`
 - `programs/farmer-core/src/lib.rs` (modified): the `expire_order(ctx)` wrapper
-- `programs/farmer-core/src/errors.rs` (modified): `// ---- Timeouts` section appended with `OrderNotExpired` 6032; the enum is now 33 variants, 6000-6032
+- `programs/farmer-core/src/errors.rs` (modified): `// ---- Timeouts` section appended with `OrderNotExpired` 6032; the M6 follow-up appended `MintExtensionNotAllowed` 6033 for `publish_offer`, so the enum is now 34 variants, 6000-6033 and this code did not shift
 - `programs/farmer-core/src/events.rs` (modified): `OrderExpired { order }` appended
 - `programs/farmer-core/src/instructions/reject_delivery_fee.rs` (modified): `escrow::close`; `customer: Signer` became `mut` as the rent destination
 - `programs/farmer-core/src/instructions/refuse_delivery.rs` (modified): `escrow::close`; gained `customer: SystemAccount` (mut) bound by `has_one = customer @ UnauthorizedCustomer`
@@ -16,7 +16,7 @@ Program
 
 Tests
 - `tests/expire_order.ts` (created): validator gates — `OrderNotExpired`, in-transit order, refund destination not owned by the customer, foreign offer; no `.signers(...)` anywhere
-- `tests/expire_order_clock.ts` (created): litesvm refund path — the exact `expires_at` second rejected, then refund, stock restore, closed escrow, rent on the customer wallet, status `Expired`, `OrderExpired`
+- `tests/expire_order_clock.ts` (created): litesvm refund path — the second before `expires_at` rejected, then at the exact `expires_at` second refund, stock restore, closed escrow, rent on the customer wallet, status `Expired`, `OrderExpired`
 - `tests/token2022.ts` (created): one pickup order end to end on a Token-2022 mint (deposit, both payouts, close)
 - `tests/helpers.ts` (modified): second allowed mint on Token-2022 (`token2022Mint()`), `escrowClosed(order)`, `lamports(account)`, `tokenBalance` and `createOrderTx` take a token program
 - `tests/complete_order.ts`, `tests/refuse_delivery.ts`, `tests/reject_delivery_fee.ts`, `tests/flow_order.ts` (modified): `escrowClosed(order)` instead of a zero escrow balance; `refuse_delivery.ts` also asserts the rent landing on the customer; the two replay tests, in `complete_order.ts` and `refuse_delivery.ts`, now expect `AccountNotInitialized`
@@ -35,13 +35,13 @@ Docs
 
 - No `Signer` field: the expiry is a fact of the clock, so escrowed money cannot be held hostage by an idle counterparty; whoever sends the transaction pays its fee and gains nothing (README 8.7).
 - Accepted statuses `EscrowedPickup | PendingDeliveryQuote | DeliveryQuoted | EscrowedReady` via `matches!`: every funded, still-waiting state. `InTransit` excluded (the warehouse owns the outcome once goods move), terminal states excluded (escrow already settled).
-- Strict `>` on `expires_at`, so the exact second is still inside the window; it is the handler's only `require!` because `Clock::get()` cannot run in an `#[account]` constraint, and it runs after every account gate.
+- Inclusive `>=` on `expires_at`, so the exact second already expires the order, the same reading `create_order` and `publish_offer` give the field; it is the handler's only `require!` because `Clock::get()` cannot run in an `#[account]` constraint, and it runs after every account gate.
 - Refund amount is `escrow.amount`, the real balance, covering subtotal-only and subtotal + accepted fee with one path (AGENTS.md escrow rule).
 - Tokens go to a caller-chosen `customer_token_account` constrained to `owner == order.customer`; the escrow rent goes to `customer`, pinned by `has_one = customer`. Neither is a signer: the rent lands on exactly one account, while the tokens can be routed to any token account the customer owns — a stranger can pick which, never whose.
 - Handler order: withdraw, close, restore stock, status `Expired`, `emit!(OrderExpired { order })` — CPIs first, so a failure writes nothing.
 - The escrow is closed on all four terminal paths, so the customer's rent never leaks; the accepted consequence is that a replayed terminal call fails with `AccountNotInitialized` (3012) rather than `InvalidOrderStatus`.
 - No pause gate and no `config` account: a refund must stay possible while the market is paused.
-- Transfer-fee Token-2022 mints are out of scope: they would underfund the escrow and make `close_account` fail with `AccountHasWithheldTransferFees`; `allowed_mints` at `init_config` is the only control.
+- Transfer-fee Token-2022 mints never get this far: they would underfund the escrow and make `close_account` fail with `AccountHasWithheldTransferFees`, so `publish_offer` rejects them with `MintExtensionNotAllowed`, behind `allowed_mints` at `init_config`.
 - Two harnesses: the validator covers the gates, litesvm covers the refund because `expires_at` comes from the 6 h / 6 h / 72 h constants and a validator clock cannot be warped.
 
 ## Prerequisites
@@ -56,3 +56,4 @@ Docs
 ## History
 
 - 2026-10-17 M6: created
+- 2026-10-17 M6 follow-up: the expiry boundary became inclusive (`now >= order.expires_at`), so the exact `expires_at` second already expires the order

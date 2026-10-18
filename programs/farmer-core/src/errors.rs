@@ -92,4 +92,8 @@ pub enum FarmerCoreError {
     // ---- Timeouts
     #[msg("Order has not reached expires_at yet")]
     OrderNotExpired,
+
+    // ---- Mint extensions
+    #[msg("Mint carries a token extension this program cannot escrow safely")]
+    MintExtensionNotAllowed,
 }

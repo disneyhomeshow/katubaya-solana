@@ -44,8 +44,8 @@ sequenceDiagram
     Note over Pg,CTA: fail -> UnauthorizedCustomer (6027), then ConstraintTokenMint (Anchor 2014)
     Pg->>ES: seeds escrow + order key, bump = order.escrow_bump
     Note over Pg,ES: wrong address -> ConstraintSeeds (2006)
-    Pg->>Pg: require Clock::get().unix_timestamp strictly after order.expires_at
-    Note over Pg,O: fail -> OrderNotExpired (6032); the exact expires_at second still fails
+    Pg->>Pg: require Clock::get().unix_timestamp at or after order.expires_at
+    Note over Pg,O: fail -> OrderNotExpired (6032); the exact expires_at second already passes
     Pg->>TP: transfer_checked(escrow to customer token account, escrow.amount, mint.decimals) signed with the escrow seeds
     TP-->>CTA: balance + escrow.amount
     Pg->>TP: close_account(escrow to customer) signed with the escrow seeds
@@ -103,11 +103,14 @@ Not touched: `ProgramConfig` (no pause gate), `Warehouse`, `WarehouseCustomer`, 
   `InTransit` is excluded because the goods are already moving and the warehouse owns the outcome (README 6:
   `FULFILLED` only from `IN_TRANSIT`); `Fulfilled`, `Refused`, `Canceled` and `Expired` are excluded because they are
   terminal and their escrow is already settled. Verified by "rejects an order already in transit".
-- **Strict `>` on `expires_at`, checked in the handler.** `require!(now > order.expires_at, OrderNotExpired)`: the
-  exact `expires_at` second is still inside the window, and `tests/expire_order_clock.ts` pins both sides, rejecting
-  `EXPIRES_AT` and accepting `EXPIRES_AT + 1`. It is the handler's only `require!` because `Clock::get()` cannot run
-  in an `#[account]` constraint, and it runs after every account gate, so a wrong offer or a bad destination reports
-  its own error even on an order that is not yet expired.
+- **Inclusive `>=` on `expires_at`, checked in the handler.** `require!(now >= order.expires_at, OrderNotExpired)`:
+  `expires_at` is the instant of expiry, inclusive, so the exact second already expires the order, and
+  `tests/expire_order_clock.ts` pins both sides, rejecting `EXPIRES_AT - 1` and accepting `EXPIRES_AT`. The field
+  reads the same way everywhere — `create_order` rejects a sale with `require!(expires_at > now, OfferExpired)` and
+  `publish_offer` validates a new deadline with `require!(e > now, InvalidExpiry)`, both treating the exact second as
+  already past — and that consistency is the reason for the comparison. It is the handler's only `require!` because
+  `Clock::get()` cannot run in an `#[account]` constraint, and it runs after every account gate, so a wrong offer or
+  a bad destination reports its own error even on an order that is not yet expired.
 - **Refund `escrow.amount`, not a recomputed sum.** One path covers all four statuses and always moves the real
   balance, subtotal with or without an accepted delivery fee (AGENTS.md "escrow.rs").
 - **Tokens to the customer's token account, rent to the customer's wallet.** The caller picks
@@ -123,10 +126,10 @@ Not touched: `ProgramConfig` (no pause gate), `Warehouse`, `WarehouseCustomer`, 
   instead of `InvalidOrderStatus`. The status gate still answers whenever the escrow is alive.
 - **No pause gate.** `config` is not an account here, so an expiry refund stays possible while the market is paused;
   among the order instructions only `create_order` and `complete_order` load `config`.
-- **Token-2022 transfer-fee mints are unsupported.** A transfer fee is withheld on the receiving account, so the
-  escrow would hold less than the subtotal and `close_account` would fail with `AccountHasWithheldTransferFees`.
-  The only control is `allowed_mints`, set once at `init_config`; the program does not inspect mint extensions
-  (README 11).
+- **Token-2022 transfer-fee mints never reach an escrow.** A transfer fee is withheld on the receiving account, so
+  the escrow would hold less than the subtotal and `close_account` would fail with `AccountHasWithheldTransferFees`.
+  `publish_offer` rejects such a mint with `MintExtensionNotAllowed` (6033), behind the admin-curated
+  `allowed_mints` set once at `init_config` (README 11), so no order and no escrow can exist on one.
 
 ## Source
 

@@ -2,8 +2,25 @@ use crate::errors::FarmerCoreError;
 use crate::events::OfferPublished;
 use crate::states::*;
 use anchor_lang::prelude::*;
+use anchor_spl::token_2022::spl_token_2022::extension::{
+    BaseStateWithExtensions, ExtensionType, StateWithExtensions,
+};
+use anchor_spl::token_2022::spl_token_2022::state::Mint as MintState;
+use anchor_spl::token_interface::Mint;
 
-/// Approved farmer creates an active `LotOffer` PDA keyed by an explicit `offer_id`; the mint allowlist is enforced here, once.
+/// Extensions that would break the escrow: a fee withheld on the receiving account, a hook that can
+/// block or re-route a transfer, a delegate that can drain any account, confidential balances that
+/// stop `close_account`, or a mint-wide pause. Checked once, here, like the allowlist.
+const DENIED_MINT_EXTENSIONS: [ExtensionType; 5] = [
+    ExtensionType::TransferFeeConfig,
+    ExtensionType::TransferHook,
+    ExtensionType::PermanentDelegate,
+    ExtensionType::ConfidentialTransferMint,
+    ExtensionType::Pausable,
+];
+
+/// Approved farmer creates an active `LotOffer` PDA keyed by an explicit `offer_id`; the mint allowlist
+/// and the extension denylist are both enforced here, once.
 #[derive(Accounts)]
 #[instruction(offer_id: u64)]
 pub struct PublishOffer<'info> {
@@ -30,6 +47,9 @@ pub struct PublishOffer<'info> {
     )]
     pub offer: Account<'info, LotOffer>,
 
+    /// The payment mint, an account and not an argument so its token extensions can be read here.
+    pub mint: InterfaceAccount<'info, Mint>,
+
     #[account(mut)]
     pub farmer: Signer<'info>,
 
@@ -44,7 +64,6 @@ pub fn publish_offer(
     unit_code: u16,
     qty: u64,
     price_minor: u64,
-    mint: Pubkey,
     expires_at: Option<i64>,
     notes_public: Option<String>,
     pack_ref: Option<Pubkey>,
@@ -65,11 +84,13 @@ pub fn publish_offer(
     if let Some(e) = expires_at {
         require!(e > now, FarmerCoreError::InvalidExpiry);
     }
+    let mint = ctx.accounts.mint.key();
     let allowed = &ctx.accounts.config.allowed_mints;
     require!(
         allowed.is_empty() || allowed.contains(&mint),
         FarmerCoreError::MintNotAllowed
     );
+    deny_mint_extensions(&ctx.accounts.mint.to_account_info())?;
 
     let offer = &mut ctx.accounts.offer;
     offer.farmer = ctx.accounts.farmer.key();
@@ -99,5 +120,22 @@ pub fn publish_offer(
         mint,
         expires_at,
     });
+    Ok(())
+}
+
+/// A legacy SPL Token mint unpacks with an empty extension list, so one path serves both programs.
+fn deny_mint_extensions(mint: &AccountInfo) -> Result<()> {
+    let data = mint.try_borrow_data()?;
+    let state = StateWithExtensions::<MintState>::unpack(&data)
+        .map_err(|_| error!(FarmerCoreError::MintExtensionNotAllowed))?;
+    let extensions = state
+        .get_extension_types()
+        .map_err(|_| error!(FarmerCoreError::MintExtensionNotAllowed))?;
+    require!(
+        !extensions
+            .iter()
+            .any(|e| DENIED_MINT_EXTENSIONS.contains(e)),
+        FarmerCoreError::MintExtensionNotAllowed
+    );
     Ok(())
 }

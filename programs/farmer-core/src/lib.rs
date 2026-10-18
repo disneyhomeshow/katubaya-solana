@@ -51,6 +51,25 @@ pub mod farmer_core {
         )
     }
 
+    /// Admin patches a warehouse: operator, pickup notes, fee or zip prefixes
+    pub fn update_warehouse(
+        ctx: Context<UpdateWarehouse>,
+        warehouse_id: u64,
+        operator: Option<Pubkey>,
+        pickup_notes: Option<String>,
+        fee_bps: Option<u16>,
+        deliver_zip_prefixes: Option<Vec<ZipPrefix>>,
+    ) -> Result<()> {
+        instructions::update_warehouse::update_warehouse(
+            ctx,
+            warehouse_id,
+            operator,
+            pickup_notes,
+            fee_bps,
+            deliver_zip_prefixes,
+        )
+    }
+
     /// Farmer registers and requests a warehouse
     pub fn register_farmer(
         ctx: Context<RegisterFarmer>,
@@ -100,7 +119,6 @@ pub mod farmer_core {
         unit_code: u16,
         qty: u64,
         price_minor: u64,
-        mint: Pubkey,
         expires_at: Option<i64>,
         notes_public: Option<String>,
         pack_ref: Option<Pubkey>,
@@ -113,7 +131,6 @@ pub mod farmer_core {
             unit_code,
             qty,
             price_minor,
-            mint,
             expires_at,
             notes_public,
             pack_ref,

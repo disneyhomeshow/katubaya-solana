@@ -10,7 +10,7 @@
 | `programs/farmer-core/src/errors.rs` | `FarmerCoreError::{OfferMismatch, MintMismatch, UnauthorizedCustomer, InvalidOrderStatus, OrderNotExpired, MathOverflow}` |
 | `programs/farmer-core/src/events.rs` | `OrderExpired` |
 | `tests/expire_order.ts` | Gates on the validator: `OrderNotExpired`, in-transit order, foreign refund destination, foreign mint, foreign offer |
-| `tests/expire_order_clock.ts` | litesvm: the refund path with a set clock, plus the exact `expires_at` second |
+| `tests/expire_order_clock.ts` | litesvm: the refund path with a set clock at the exact `expires_at` second, plus the second before it |
 | `tests/helpers.ts` | everything `tests/expire_order.ts` imports: `program`, `market`, `createOrder`, `markInTransit`, `publishOffer`, `fund`, `fundTokens`, `testMint`, `token2022Mint`, `fails`. `tests/expire_order_clock.ts` imports none of it: litesvm needs no validator fixtures |
 | `target/idl/farmer_core.json` | Generated IDL (account resolution, escrow PDA seeds, discriminator, error codes, event) |
 
@@ -62,7 +62,7 @@ Client resolution, from the IDL: `escrow` is a `pda` (seeds `b"escrow"` + the `o
 `customer` carry `relations: ["order"]`, so the Anchor TS client fetches `order` and reads them off it. Only `order`,
 `customer_token_account` and `token_program` must be passed, and there is no `signers` list — the provider wallet
 appears as fee payer only. `tests/expire_order.ts` still passes `offer` and `mint` through `.accountsPartial`,
-because one case deliberately sends a foreign offer.
+because two cases deliberately send a foreign offer and a foreign mint.
 
 ## Arguments
 
@@ -81,7 +81,7 @@ Written fields only (`programs/farmer-core/src/states.rs`): `Order.status: Order
 
 | Error | Code | Raised when |
 |---|---|---|
-| `OrderNotExpired` | 6032 | `Clock::get()?.unix_timestamp <= order.expires_at`, the only `require!` in the handler (tests: "rejects an order that has not reached expires_at" on the validator, "rejects the exact expires_at second" on litesvm) |
+| `OrderNotExpired` | 6032 | `Clock::get()?.unix_timestamp < order.expires_at`, the only `require!` in the handler (tests: "rejects an order that has not reached expires_at" on the validator, "rejects the second before expires_at" on litesvm) |
 | `InvalidOrderStatus` | 6028 | status not in `{EscrowedPickup, PendingDeliveryQuote, DeliveryQuoted, EscrowedReady}` (test: "rejects an order already in transit") |
 | `UnauthorizedCustomer` | 6027 | two sources, same code: `order.customer != customer` (the `SystemAccount` receiving the escrow rent, checked first) or `customer_token_account.owner != order.customer` (test: "rejects a refund destination not owned by the customer", stranger ATA of the same mint from `fundTokens(await fund(), 0)`) |
 | `OfferMismatch` | 6026 | `order.offer` differs from the `offer` account passed (test: "rejects an offer that is not the order's", a second offer of the same farmer) |
@@ -90,7 +90,7 @@ Written fields only (`programs/farmer-core/src/states.rs`): `Order.status: Order
 | `AccountNotInitialized` (Anchor) | 3012 | the escrow is gone, i.e. a terminal path already ran, so a replay reports this instead of `InvalidOrderStatus`; not exercised here (the replays live in `tests/refuse_delivery.ts` and `tests/complete_order.ts`) |
 | `ConstraintSeeds` (Anchor) | 2006 | `escrow` not at `["escrow", order]` with `order.escrow_bump` (the client derives it from the IDL); not exercised |
 | `ConstraintTokenMint` (Anchor) | 2014 | a customer-owned token account of another mint: it passes the owner constraint and fails `token::mint`; not exercised |
-| `AccountHasWithheldTransferFees` (Token-2022) | n/a | the escrow is on a transfer-fee mint, so `close_account` refuses; prevented only by `allowed_mints` (README 11) |
+| `AccountHasWithheldTransferFees` (Token-2022) | n/a | the escrow is on a transfer-fee mint, so `close_account` refuses; unreachable because `publish_offer` rejects a `TransferFeeConfig` mint with `MintExtensionNotAllowed` (6033), behind `allowed_mints` (README 11) |
 
 ## Events
 
@@ -114,7 +114,7 @@ const expire = (order: anchor.PublicKey, o: Overrides = {}) =>
   program.methods.expireOrder().accountsPartial({
     order,
     offer: o.offer ?? m.offer,
-    mint: testMint(),
+    mint: o.mint ?? testMint(),
     customerTokenAccount: o.customerAta ?? m.buyer.ata,
     tokenProgram: TOKEN_PROGRAM_ID,
   });
@@ -142,8 +142,8 @@ subtotal 10_000_000). No `.signers(...)` anywhere: the call is permissionless.
   that `customer: SystemAccount` field in M6, bound by `has_one = customer @ UnauthorizedCustomer`, and `ExpireOrder`
   was written with it. `SystemAccount` rather than `UncheckedAccount` makes Anchor assert the system program owns it;
   `mut` is required to receive lamports.
-- Compute units, maximum over the suite out of the 200k default: `expire_order` 13887, against `create_order` 56600
-  and `complete_order` 36822. No compute-budget instruction is needed.
+- Compute units out of the 200k default (measured as the suite maximum and rounded: the figure drifts by a few thousand between runs): `expire_order` ~14k, against `create_order` ~58k
+  and `complete_order` ~37k. No compute-budget instruction is needed.
 - `tests/expire_order.ts` cannot reach the refund: `expires_at` is `now + 6 h` or `now + 72 h` from the constants in
   `states.rs` and `solana-test-validator` cannot be warped. The refund therefore lives in
   `tests/expire_order_clock.ts` on litesvm (dev dependency `litesvm` 1.6.0), which loads the real
@@ -151,6 +151,6 @@ subtotal 10_000_000). No `.signers(...)` anywhere: the call is permissionless.
   `svm.setAccount` (plain generated pubkeys work because `ExpireOrder` puts no `seeds` on `order`) and moves
   `getClock()` / `setClock()`. It encodes the call from the raw IDL through `BorshCoder` and calls
   `svm.expireBlockhash()` between the two otherwise identical sends, else rejected as `AlreadyProcessed`.
-- `tests/token2022.ts` runs one pickup order end to end on the Token-2022 mint in `config.allowed_mints`, covering
-  `deposit`, both payout withdrawals and `close` against that program; `expire_order` reuses those same CPIs and is
-  not re-run there.
+- `tests/token2022.ts` runs one pickup order end to end on `token2022Mint()`, the extension-free Token-2022 mint in
+  `config.allowed_mints`, covering `deposit`, both payout withdrawals and `close` against that program;
+  `expire_order` reuses those same CPIs and is not re-run there.

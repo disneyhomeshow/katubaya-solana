@@ -230,7 +230,13 @@ Order fields:
 - `init_config(logistics_wallet, paused, allowed_mints?)`
 - `set_paused(paused)` (admin; the only writer of `config.paused`, which gates market instructions)
 - `create_warehouse(warehouse_id, operator, name, pickup_notes, fee_bps, deliver_zip_prefixes, delivery_fee_rules_uri?)`
-- `update_warehouse(...)` (fees, notes, operator, prefixes)
+- `update_warehouse(warehouse_id, operator?, pickup_notes?, fee_bps?, deliver_zip_prefixes?)`
+  - signer: admin, not the operator — a lost operator key could not sign its own rotation
+  - writes only the fields given; an all-`None` call is a no-op
+  - rotating `operator` is the only exit for an order already `IN_TRANSIT`, which only the warehouse
+    operator can complete and which `expire_order` deliberately refuses
+  - a new `fee_bps` applies to future orders only: `order.service_fee_minor` is fixed at `create_order`
+  - `name` and `delivery_fee_rules_uri` are not updatable
 
 ### 8.2 Farmer onboarding
 - `register_farmer(warehouse, display_name, public_profile_uri)`
@@ -258,10 +264,14 @@ Order fields:
 > Eligibility check for ordering requires `WarehouseCustomer.status == CONFIRMED`.
 
 ### 8.4 Publishing offers (transparent market)
-- `publish_offer(offer_id, crop_name, cultivar_name?, unit_code, qty, price_minor, mint, expires_at?, notes_public?, pack_ref?)`
+- `publish_offer(offer_id, crop_name, cultivar_name?, unit_code, qty, price_minor, expires_at?, notes_public?, pack_ref?)`
   - signer: farmer
   - requires `farmer.warehouse_approved`
-  - mint allowed if `config.allowed_mints` is non-empty (checked here, once; orders trust `offer.mint`)
+  - the mint is an **account**, not an argument, so a pubkey that is not a real mint is rejected here
+    rather than at the first transfer, and its token extensions can be read
+  - mint allowed when `config.allowed_mints` is empty or contains it (checked here, once; orders trust `offer.mint`)
+  - mint rejected if it carries `TransferFeeConfig`, `TransferHook`, `PermanentDelegate`,
+    `ConfidentialTransferMint` or `Pausable`: each one would strand or endanger escrowed funds (section 11)
 - `deactivate_offer(offer_id)` (stop purchases)
 - optional:
   - `update_offer_price(offer_id, new_price_minor)`
@@ -418,10 +428,14 @@ Clients must convert UI quantities ↔ on-chain integers deterministically.
 - Use SPL token transfers for payment (e.g., USDC).
 - Prefer `anchor_spl::token_interface` to support both Token Program and Token-2022.
 - Escrow ATA should be a program-derived authority account.
-- **Do not allowlist a Token-2022 mint that charges a transfer fee.** The fee is withheld on the
-  receiving account, so the escrow would both hold less than the subtotal (breaking the payout
-  arithmetic) and refuse to close until the withheld amount is harvested. `allowed_mints` is the only
-  control: it is set once at `init_config` and the program does not inspect mint extensions.
+- **Mints carrying a dangerous token extension are rejected on-chain at `publish_offer`.** A transfer
+  fee is withheld on the receiving account, so the escrow would hold less than the subtotal (breaking
+  the payout arithmetic) and refuse to close until the withheld amount is harvested; a transfer hook
+  can block or re-route a transfer (`transfer_checked` is issued without the hook's extra accounts); a
+  permanent delegate can move tokens out of any account, the escrow included; non-zero confidential
+  balances stop `close_account`; and a pausable mint lets its authority freeze transfers while an
+  escrow is funded. `allowed_mints` stays the primary control — admin-curated and immutable after
+  `init_config` — and the extension check is defence in depth behind it.
 
 ---
 
@@ -429,7 +443,8 @@ Clients must convert UI quantities ↔ on-chain integers deterministically.
 
 ### Must-have checks
 - Program pause gate (`config.paused`)
-- Mint allowlist enforced once at `publish_offer`
+- Mint allowlist enforced once at `publish_offer`, which also rejects a mint that is not a real mint
+  account and one carrying a denied token extension
 - Offer active and sufficient quantity
 - WarehouseCustomer CONFIRMED before order creation
 - Delivery quote/acceptance states enforced exactly

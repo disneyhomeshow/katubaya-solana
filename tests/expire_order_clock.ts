@@ -161,15 +161,15 @@ describe("expire_order (clock)", () => {
 
   const account = (address: PublicKey) => Buffer.from(svm.getAccount(address.toBase58()).data);
 
-  it("rejects the exact expires_at second", () => {
-    const res = expireAt(EXPIRES_AT);
+  it("rejects the second before expires_at", () => {
+    const res = expireAt(EXPIRES_AT - 1);
     expect(res.meta().logs().join("\n")).to.include("OrderNotExpired");
   });
 
-  it("refunds, restores stock, closes the escrow and emits OrderExpired", () => {
+  it("refunds, restores stock, closes the escrow and emits OrderExpired at the exact expires_at second", () => {
     const rent = svm.getBalance(escrow.toBase58());
     const customerSol = svm.getBalance(customer.publicKey.toBase58());
-    const res = expireAt(EXPIRES_AT + 1);
+    const res = expireAt(EXPIRES_AT);
     expect(res.logs().join("\n")).to.not.include("AnchorError");
 
     const evs = [...new anchor.EventParser(PROGRAM_ID, coder).parseLogs(res.logs())];

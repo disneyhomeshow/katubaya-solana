@@ -242,7 +242,11 @@ Deliver:
   covered since M4/M5 by `refuse_delivery.ts`, `reject_delivery_fee.ts`, `complete_order.ts` and
   `mark_in_transit.ts`; M6 adds the expiry gates plus a litesvm clock test for the refund path
 - One end-to-end run on a Token-2022 mint (`tests/token2022.ts`)
-- Compute budget review + constraints tightening
+- Compute budget review + constraints tightening:
+  - `update_warehouse` (admin; operator rotation is the only exit for an escrow stuck in `IN_TRANSIT`)
+  - `publish_offer` takes the mint as an account and rejects the five token extensions that would
+    strand escrowed funds (`MintExtensionNotAllowed`)
+  - `expires_at` reads inclusively everywhere (`now >= order.expires_at` in `expire_order`)
 
 ### M7 — Optional Pack Pointer (Integrity Anchor)
 Deliver:

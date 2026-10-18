@@ -149,7 +149,7 @@ From `tests/complete_order.ts` (`Overrides` = optional `signer`, `farmerAta`, `l
   `[SEED_ESCROW, order.key(), [order.escrow_bump]]`, `decimals = mint.decimals`; zero amounts are sent unconditionally (the `fee_bps` 0
   pickup test moves 0 to the logistics account). Then `escrow::close` issues `close_account` with the same signer seeds and
   `destination = ctx.accounts.customer.to_account_info()` — `close` takes an `&AccountInfo`, so this `SystemAccount` and the `Signer` of
-  `reject_delivery_fee` both fit. All three run before the status write; a failure aborts with no state change. 36_822 CU measured over the
+  `reject_delivery_fee` both fit. All three run before the status write; a failure aborts with no state change. ~37k CU measured over the
   suite, well inside the 200k default.
 - Token-2022: fine on a plain mint (`tests/token2022.ts`), broken on a transfer-fee mint — the fee is withheld on the receiving account, so
   the escrow holds less than the subtotal and `close_account` returns `AccountHasWithheldTransferFees`. `allowed_mints` at `init_config` is

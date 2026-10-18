@@ -29,7 +29,7 @@ describe("token-2022", () => {
     const order = orderPDA(offer, customer.publicKey, id);
     expect(await tokenBalance(escrowPDA(order), TOKEN_2022_PROGRAM_ID)).to.equal(SUBTOTAL);
 
-    await markInTransit(order, { operator, warehouse, farmer, offer, buyer });
+    await markInTransit(order, { operator, warehouse });
     await program.methods
       .completeOrder()
       .accountsPartial({

@@ -1,8 +1,9 @@
 import { expect } from "chai";
 import * as anchor from "@coral-xyz/anchor";
+import { createMint } from "@solana/spl-token";
 import {
-  program, BN, Keypair, offerPDA, freshId, fails, fund, events, setPaused,
-  createWarehouse, registerFarmer, approvedFarmer, offerArgs, publishOfferTx,
+  program, provider, payer, BN, Keypair, offerPDA, freshId, fails, fund, events, setPaused,
+  createWarehouse, registerFarmer, approvedFarmer, offerArgs, publishOfferTx, feeMint, DECIMALS,
 } from "./helpers";
 
 describe("publish_offer", () => {
@@ -77,7 +78,18 @@ describe("publish_offer", () => {
   });
 
   it("rejects a mint outside the allowlist", async () => {
-    expect(await fails(publish({ mint: Keypair.generate().publicKey }).rpc())).to.equal("MintNotAllowed");
+    const unlisted = await createMint(provider.connection, payer, payer.publicKey, null, DECIMALS);
+    expect(await fails(publish({ mint: unlisted }).rpc())).to.equal("MintNotAllowed");
+  });
+
+  it("rejects a pubkey that is not a mint account", async () => {
+    expect(await fails(publish({ mint: Keypair.generate().publicKey }).rpc())).to.equal("AccountNotInitialized");
+  });
+
+  // Defence in depth behind the allowlist: a transfer fee is withheld on the receiving account, so the
+  // escrow would hold less than the subtotal and could never be closed. feeMint() IS allowlisted.
+  it("rejects an allowlisted mint that charges a transfer fee", async () => {
+    expect(await fails(publish({ mint: feeMint() }).rpc())).to.equal("MintExtensionNotAllowed");
   });
 
   it("rejects while the program is paused", async () => {

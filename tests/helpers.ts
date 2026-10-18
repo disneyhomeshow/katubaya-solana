@@ -2,10 +2,14 @@ import * as anchor from "@coral-xyz/anchor";
 import { Program } from "@coral-xyz/anchor";
 import { FarmerCore } from "../target/types/farmer_core";
 import {
+  ExtensionType,
   TOKEN_2022_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
+  createInitializeMint2Instruction,
+  createInitializeTransferFeeConfigInstruction,
   createMint,
   getAccount,
+  getMintLen,
   getOrCreateAssociatedTokenAccount,
   mintTo,
 } from "@solana/spl-token";
@@ -50,6 +54,29 @@ export const allowedMints: anchor.web3.PublicKey[] = [];
 export const testMint = () => allowedMints[0];
 /** Second allowed mint, on Token-2022: the program reaches both through `token_interface`. */
 export const token2022Mint = () => allowedMints[1];
+/** Third allowed mint, Token-2022 with a transfer fee: allowlisted on purpose, `publish_offer` still rejects it. */
+export const feeMint = () => allowedMints[2];
+
+/** Token-2022 mint carrying a TransferFeeConfig extension; `createMint` cannot add extensions. */
+const createFeeMint = async () => {
+  const mint = Keypair.generate();
+  const space = getMintLen([ExtensionType.TransferFeeConfig]);
+  const tx = new anchor.web3.Transaction().add(
+    anchor.web3.SystemProgram.createAccount({
+      fromPubkey: payer.publicKey,
+      newAccountPubkey: mint.publicKey,
+      space,
+      lamports: await provider.connection.getMinimumBalanceForRentExemption(space),
+      programId: TOKEN_2022_PROGRAM_ID,
+    }),
+    createInitializeTransferFeeConfigInstruction(
+      mint.publicKey, payer.publicKey, payer.publicKey, 50, BigInt(5_000), TOKEN_2022_PROGRAM_ID
+    ),
+    createInitializeMint2Instruction(mint.publicKey, DECIMALS, payer.publicKey, null, TOKEN_2022_PROGRAM_ID)
+  );
+  await provider.sendAndConfirm(tx, [mint]);
+  return mint.publicKey;
+};
 
 // ProgramConfig is a singleton: create it once, before any file's tests.
 before(async () => {
@@ -62,6 +89,7 @@ before(async () => {
   allowedMints.push(
     await createMint(provider.connection, payer, payer.publicKey, null, DECIMALS, undefined, undefined, TOKEN_2022_PROGRAM_ID)
   );
+  allowedMints.push(await createFeeMint());
   await program.methods.initConfig(logisticsWallet, false, allowedMints).rpc();
 });
 
@@ -144,8 +172,8 @@ export const offerArgs = () => ({
 export const publishOfferTx = (farmer: anchor.web3.Keypair, id: number, o: Partial<ReturnType<typeof offerArgs>> = {}) => {
   const a = { ...offerArgs(), ...o };
   return program.methods
-    .publishOffer(new BN(id), a.crop, a.cultivar, a.unitCode, a.qty, a.price, a.mint, a.expiresAt, a.notes, a.packRef)
-    .accountsPartial({ farmer: farmer.publicKey })
+    .publishOffer(new BN(id), a.crop, a.cultivar, a.unitCode, a.qty, a.price, a.expiresAt, a.notes, a.packRef)
+    .accountsPartial({ farmer: farmer.publicKey, mint: a.mint })
     .signers([farmer]);
 };
 
@@ -232,11 +260,12 @@ export const createOrder = async (
 /** A whole market: warehouse + operator, approved farmer with one offer, confirmed and funded customer. */
 export const market = async (offerOverrides: Partial<ReturnType<typeof offerArgs>> = {}) => {
   const operator = await fund();
-  const warehouse = await createWarehouse(operator.publicKey);
+  const warehouseId = freshId();
+  const warehouse = await createWarehouse(operator.publicKey, warehouseId);
   const farmer = await approvedFarmer(warehouse, operator);
   const offer = await publishOffer(farmer, offerOverrides);
   const buyer = await confirmedCustomer(warehouse, operator);
-  return { operator, warehouse, farmer, offer, buyer };
+  return { operator, warehouse, warehouseId, farmer, offer, buyer };
 };
 
 export const SUBTOTAL = 10 * 1_000_000; // default order: qty 10 at price 1_000_000
@@ -278,7 +307,10 @@ export const acceptFee = (order: anchor.web3.PublicKey, m: Market) =>
     .signers([m.buyer.customer])
     .rpc();
 
-export const markInTransit = (order: anchor.web3.PublicKey, m: Market) =>
+export const markInTransit = (
+  order: anchor.web3.PublicKey,
+  m: { warehouse: anchor.web3.PublicKey; operator: anchor.web3.Keypair }
+) =>
   program.methods
     .markInTransit()
     .accountsPartial({ order, warehouse: m.warehouse, operator: m.operator.publicKey })

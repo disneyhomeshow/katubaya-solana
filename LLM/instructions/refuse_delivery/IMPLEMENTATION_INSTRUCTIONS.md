@@ -151,4 +151,4 @@ warehouse `fee_bps` 250, approved farmer, offer qty 500 at 1_000_000, customer w
   asserts `escrowClosed(order)` (`getAccountInfo` returns `null`) and `lamports(customer) == before + lamports(escrow)`.
 - The refund destination must already exist (no ATA creation); a customer-owned account of another mint passes the owner constraint
   and fails Anchor's `token::mint` check (`ConstraintTokenMint`, 2014).
-- Compute: 25122 CU, the maximum over the suite, well inside the 200k default; no compute-budget instruction needed.
+- Compute: ~25k CU (measured as the suite maximum and rounded: the figure drifts by a few thousand between runs), well inside the 200k default; no compute-budget instruction needed.

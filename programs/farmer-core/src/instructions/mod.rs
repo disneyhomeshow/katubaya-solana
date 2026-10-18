@@ -17,6 +17,7 @@ pub mod request_customer_confirmation;
 pub mod revoke_customer;
 pub mod set_farmer_warehouse;
 pub mod set_paused;
+pub mod update_warehouse;
 
 pub use accept_delivery_fee::*;
 pub use complete_order::*;
@@ -37,3 +38,4 @@ pub use request_customer_confirmation::*;
 pub use revoke_customer::*;
 pub use set_farmer_warehouse::*;
 pub use set_paused::*;
+pub use update_warehouse::*;

@@ -49,8 +49,9 @@ pub struct ExpireOrder<'info> {
 /// No signer: the expiry is a fact of the clock, so whoever pays the transaction fee may trigger it.
 pub fn expire_order(ctx: Context<ExpireOrder>) -> Result<()> {
     let now = Clock::get()?.unix_timestamp;
+    // `expires_at` is the instant of expiry, inclusive, matching `offer.expires_at` at `create_order`.
     require!(
-        now > ctx.accounts.order.expires_at,
+        now >= ctx.accounts.order.expires_at,
         FarmerCoreError::OrderNotExpired
     );
 

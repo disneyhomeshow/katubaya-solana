@@ -143,4 +143,4 @@ one; the signature in `.signers([...])` is required either way. The happy path t
   so no field was added. The three operator-signed or signerless terminal paths had to add a `customer: SystemAccount` instead.
 - `amount` is `ctx.accounts.escrow.amount`, never `order.subtotal_minor` (equal at `DeliveryQuoted`: the fee is only escrowed by
   `accept_delivery_fee`). `delivery_fee_minor`, `expires_at` and `fulfillment_mode` are not read.
-- Compute: 23413 CU measured as the maximum over the suite, against the 200k default; no compute-budget instruction needed.
+- Compute: ~23k CU (measured as the suite maximum and rounded: the figure drifts by a few thousand between runs), against the 200k default; no compute-budget instruction needed.

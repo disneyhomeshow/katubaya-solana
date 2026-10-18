@@ -23,7 +23,7 @@ Docs
 - Singleton PDA on a constant seed: later instructions resolve `config` from the IDL, and `init` rejects a duplicate without an `initialized` flag.
 - Signer becomes admin with no precondition: nothing exists on chain to gate against before the config does.
 - `allowed_mints` length bounded with `require!`, not a constraint: it is an arg bound (`AGENTS.md` Error Handling); the 1232 B tx size already keeps the vector under 31, so the branch is defensive only.
-- Empty `allowed_mints` means "any mint"; enforcement lives in `publish_offer`, so the config stays data-only.
+- Empty `allowed_mints` means "any mint that is a real mint account and carries no denied token extension"; enforcement lives in `publish_offer`, so the config stays data-only.
 - Single `FarmerCoreError` enum: Anchor 0.32 writes only one `#[error_code]` enum into the IDL (comment in `errors.rs`).
 - Config created once in `tests/helpers.ts`, never in a test file: `init_config` is not re-runnable, so per-file setup would collide on the PDA.
 

@@ -53,7 +53,7 @@ Seeds `[SEED_CONFIG]` = `["config"]`, canonical bump. Size `8 + ProgramConfig::I
 - **No admin precondition; the signer becomes admin.** Nothing exists on chain to gate against before the config does. The deployer must call `init_config` right after deploy, since the first successful caller holds the admin role.
 - **Gate as constraint, bound as `require!`.** The only account relationship (`admin` signs and pays) is `#[account(mut)] Signer`; the only arg bound (`allowed_mints.len() <= MAX_ALLOWED_MINTS`) is a `require!` in the handler, per `AGENTS.md` "Error Handling".
 - **`MAX_ALLOWED_MINTS = 30` is a transaction limit, not an account limit.** The 1232 B transaction size, not rent, bounds the vector (comment in `states.rs`): 31 pubkeys plus message overhead do not fit, so `TooManyAllowedMints` is a defensive branch.
-- **Allowlist stored here, enforced elsewhere.** Empty `allowed_mints` means "any mint"; the check runs once in `publish_offer` (`AGENTS.md` "Validation Rules", README 8.4). `init_config` only validates the length.
+- **Allowlist stored here, enforced elsewhere.** Empty `allowed_mints` means "any mint that is a real mint account and carries no denied token extension"; the check runs once in `publish_offer` (`AGENTS.md` "Validation Rules", README 8.4). `init_config` only validates the length.
 - **Rent is constant.** `space` is the full `INIT_SPACE` whatever the vector length, so the account never needs a realloc to grow the allowlist later.
 
 ## Source

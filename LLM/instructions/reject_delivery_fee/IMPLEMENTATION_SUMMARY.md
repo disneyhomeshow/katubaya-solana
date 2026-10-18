@@ -46,7 +46,7 @@ Docs
 - Emits `DeliveryFeeRejected { order }` only (`deliveryFeeRejected` in the TS client); README 9's `OrderCanceled` has no instruction behind it.
 - The `Order` PDA is still not closed: only the escrow is, so the `Canceled` record and its rent stay on chain.
 - `MintMismatch`, missing-account and missing-signer cases are not tested (single-mint fixture, framework-level errors).
-- Compute: 23413 CU measured as the suite maximum, well inside the 200k default; the close CPI did not require a compute-budget bump.
+- Compute: ~23k CU (measured as the suite maximum and rounded: the figure drifts by a few thousand between runs), well inside the 200k default; the close CPI did not require a compute-budget bump.
 
 ## Prerequisites
 
