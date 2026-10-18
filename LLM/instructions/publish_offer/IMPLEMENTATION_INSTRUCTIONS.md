@@ -45,7 +45,7 @@ Nine args; the mint moved out of this list and into the accounts struct.
 | `price_minor` | `u64` | `BN` | `> 0` | `InvalidPrice` |
 | `expires_at` | `Option<i64>` | `BN \| null` | `> Clock::get()?.unix_timestamp` when `Some` | `InvalidExpiry` |
 | `notes_public` | `Option<String>` | `string \| null` | `len() <= MAX_NOTES_LEN` (500) when `Some` | `NotesTooLong` |
-| `pack_ref` | `Option<Pubkey>` | `PublicKey \| null` | none (stored unvalidated until PackPointer, M7) | n/a |
+| `pack_ref` | `Option<Pubkey>` | `PublicKey \| null` | none, by decision: never validated, never read (README 16) | n/a |
 
 ## Account layout
 
@@ -56,7 +56,7 @@ pub struct LotOffer {
     pub farmer: Pubkey, // farmer authority (wallet), also an offer seed
     pub warehouse: Pubkey,
     pub offer_id: u64,
-    pub pack_ref: Option<Pubkey>, // PackPointer (M7), stored unvalidated until then
+    pub pack_ref: Option<Pubkey>, // free-form hint, never validated and never read: see README 16
     #[max_len(MAX_NAME_LEN)]
     pub crop_name: String,
     #[max_len(MAX_NAME_LEN)]

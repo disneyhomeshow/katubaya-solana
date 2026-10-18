@@ -109,7 +109,7 @@ pub struct LotOffer {
     pub farmer: Pubkey, // farmer authority (wallet), also an offer seed
     pub warehouse: Pubkey,
     pub offer_id: u64,
-    pub pack_ref: Option<Pubkey>, // PackPointer (M7), stored unvalidated until then
+    pub pack_ref: Option<Pubkey>, // free-form hint, never validated and never read: see README 16
     #[max_len(MAX_NAME_LEN)]
     pub crop_name: String,
     #[max_len(MAX_NAME_LEN)]

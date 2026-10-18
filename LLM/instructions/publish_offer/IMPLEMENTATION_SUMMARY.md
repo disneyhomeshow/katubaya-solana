@@ -36,7 +36,7 @@ Docs
 - `constraint = !config.paused` on `config` (market instruction). `set_paused` added in M3 so the gate can be exercised and operated; the test restores `paused = false` in `finally` because `ProgramConfig` is a singleton shared by every test file.
 - Gates are `#[account]` constraints; `require!` only validates args and the mint, in handler order: names, notes, `qty`, `price_minor`, `expires_at`, allowlist, extensions.
 - `created_at` from `Clock::get()`, the same `now` used for the `InvalidExpiry` check; never from the client.
-- `qty` stored as `qty_remaining`, `active = true` at publish; `pack_ref` (PackPointer, M7) and `unit_code` (client mapping, README 10) stored unvalidated.
+- `qty` stored as `qty_remaining`, `active = true` at publish; `pack_ref` (an unvalidated hint; M7 deferred, README 16) and `unit_code` (client mapping, README 10) stored unvalidated.
 - Farmer pays rent (`payer = farmer`, 895 bytes); the provider wallet is not involved.
 - `update_offer_price` / `increase_offer_qty` (README 8.4 optional) not implemented and not on the roadmap.
 - Only one denied extension is exercised (`feeMint()`, a transfer-fee mint): the other four hit the same branch of the same loop. The test file covers every named error (`NameTooLong` twice, from `crop_name` and from `cultivar_name`) and skips missing-profile and missing-signer cases (framework-level).

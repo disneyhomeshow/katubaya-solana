@@ -248,8 +248,15 @@ Deliver:
     strand escrowed funds (`MintExtensionNotAllowed`)
   - `expires_at` reads inclusively everywhere (`now >= order.expires_at` in `expire_order`)
 
-### M7 — Optional Pack Pointer (Integrity Anchor)
-Deliver:
+### M7 — Optional Pack Pointer (Integrity Anchor) — DEFERRED
+Specified (account per README 5.6, `publish_pack_pointer`, and `publish_offer` taking the pack as an
+optional account so the link can be validated) and then deliberately not built: nothing on-chain or in
+a client reads `pack_ref`, and the anchor covers a ciphertext whose keys are out of MVP scope, so it
+would cost the farmer rent for data nobody consumes. README 16 carries the decision and the warning
+that `pack_ref` is never validated. Revisit when a client will read packs — the chain-anchored
+timestamp is the only part that cannot be retrofitted.
+
+Would deliver:
 - `PackPointer` account + publish instruction (optional)
 - Offer linking to pack pointers
 

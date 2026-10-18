@@ -212,6 +212,7 @@ programs/farmer-core/src/
 - Signers and relationships via `has_one` / `constraint`; status transitions via `constraint = order.status == OrderStatus::X @ FarmerCoreError::InvalidStatus`
 - Mint allowlist is enforced once, in `publish_offer`: `config.allowed_mints.is_empty() || config.allowed_mints.contains(&mint)`. `create_order` trusts `offer.mint`
 - The mint reaches `publish_offer` as an `InterfaceAccount<'info, Mint>`, not as an argument, so the same instruction also rejects a pubkey that is not a mint and a mint carrying any of `DENIED_MINT_EXTENSIONS` (`TransferFeeConfig`, `TransferHook`, `PermanentDelegate`, `ConfidentialTransferMint`, `Pausable`), each of which would strand escrowed funds
+- `LotOffer.pack_ref` is written and never validated or read — M7 was specified and deferred (README 16). Do not add a check without building the `PackPointer` account it would check against, and do not let a client treat it as provenance
 - `expires_at` means the instant of expiry, inclusive, in both directions: an offer is expired when `now >= offer.expires_at` and an order can be expired from `now >= order.expires_at`
 - Validate input bounds (string lengths, vector sizes, etc.) with `require!`
 

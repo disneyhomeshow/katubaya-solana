@@ -133,7 +133,7 @@ Farmers may publish a pointer to encrypted katubaya export data:
 - `farmer: Pubkey`
 - `warehouse: Pubkey`
 - `offer_id: u64`
-- `pack_ref: Option<Pubkey>` (PackPointer optional)
+- `pack_ref: Option<Pubkey>` (optional hint; **never validated and never read on-chain** — see section 16)
 - Public item fields:
   - `crop_name: String` (bounded)
   - `cultivar_name: Option<String>` (bounded)
@@ -535,6 +535,19 @@ This program does not depend on katubaya packs, but may optionally allow:
 - linking offers to packs for provenance
 
 This keeps katubaya data farmer-owned and portable, while enabling third-party Bridges.
+
+**Status: specified and deliberately deferred.** `PackPointer` (section 5.6) and the validated
+offer→pack link were designed and then not built, because nothing on-chain or in a client consumes
+them yet: an integrity anchor over a *ciphertext* whose keys are out of MVP scope (section 3.2) proves
+only that a blob is unchanged, never that it says anything true, and the rent (~0.0023 SOL per pack)
+would fall on the farmer for data no instruction reads.
+
+What this leaves in place, and what a client must know:
+- `LotOffer.pack_ref` stays an `Option<Pubkey>` that the program **writes and never validates**: it is
+  not checked for being a real account, for belonging to the offer's farmer, or for pointing anywhere.
+  A non-null value is a hint chosen by whoever published the offer. **Never render it as provenance.**
+- Build it when a katubaya client is actually going to read packs. The one part that cannot be
+  retrofitted is the chain-anchored timestamp: a blob's existence at a past slot cannot be proven later.
 
 ---
 

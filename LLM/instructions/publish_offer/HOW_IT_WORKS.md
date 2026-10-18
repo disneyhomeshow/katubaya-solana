@@ -117,7 +117,11 @@ Not touched: `Warehouse` (its key comes from the profile), `CustomerProfile`, `W
 - **`require!` only on args, in handler order:** names, notes, `qty`, `price_minor`, `expires_at`, then the mint's
   key and its extensions. Zero quantity or price would make an unsellable listing; `expires_at` is compared with the
   same `Clock` value stored in `created_at`, so an offer cannot be published already expired.
-- **`pack_ref` and `unit_code` are stored unvalidated.** `PackPointer` lands in M7 (comment in `states.rs`);
+- **`pack_ref` and `unit_code` are stored unvalidated, and that is now a settled decision, not a
+  pending one.** M7's `PackPointer` was specified and deliberately deferred (README 16): no instruction
+  reads `pack_ref`, nothing checks that it is a real account or that it belongs to this farmer, so a
+  client must never render it as proof of provenance — a non-null value is only a hint chosen by whoever
+  published the offer. The `states.rs` comment says so;
   `unit_code` is a client-side mapping (README section 10).
 - **Farmer pays rent** (`payer = farmer`, `mut`): the listing is the farmer's account; the provider wallet is not involved.
 - **No `update_offer_price` / `increase_offer_qty`.** README 8.4 lists them as optional; they are not implemented
