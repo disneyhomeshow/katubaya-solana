@@ -237,6 +237,13 @@ programs/farmer-core/src/
 - **Clock-dependent tests run on litesvm**, not the validator, which cannot be warped: `tests/expire_order_clock.ts` loads `target/deploy/farmer_core.so`, injects its fixtures with `svm.setAccount` and moves time with `getClock()` / `setClock()`. It builds instructions from the raw IDL through `BorshCoder` — snake_case instruction names, PascalCase account names, PascalCase enum variants, `await` on `accounts.encode` — and calls `svm.expireBlockhash()` between two otherwise identical sends, which would else be rejected as `AlreadyProcessed`. Everything that does not need a clock stays on `anchor test`
 - **Flow test**: lands together with `create_order` (M4) as `tests/flow_order.ts`: confirm_customer → publish_offer → create_order → quote_delivery_fee → accept_delivery_fee; M5 extends it through mark_in_transit → complete_order
 
+### Measuring, Not Reciting
+
+Two numbers that look like constants and are not. Measure them, never quote them from memory:
+
+- **Compute units drift between runs.** `create_order` measured 56600 and then 58154 CU across two runs with no code change, so the per-instruction docs carry rounded figures on purpose. Read them from `.anchor/program-logs/<program-id>.farmer_core.log` after a run, attributing each `consumed` line to the last `Program log: Instruction:` seen at invoke depth 1 — a CPI logs its own instruction name and will otherwise charge the token program's work to the caller. For an instruction whose happy path only runs on litesvm, `res.computeUnitsConsumed()` gives it directly.
+- **Rent is not the figure in your head.** A 165-byte token account is **1_488_440** lamports under the current schedule, not the classic 2_039_280; `solana rent <bytes>` and litesvm's `minimumBalanceForRentExemption` agree. Tests should compare balance deltas against the account's own lamports rather than a literal.
+
 ### Test Coverage Requirements
 
 Each instruction test file covers, one `it` each:
