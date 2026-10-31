@@ -1,0 +1,36 @@
+{
+  "name": "katubaya-dapp",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "idl": "sh scripts/build-idl.sh",
+    "codama": "node scripts/codama.mjs",
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -b"
+  },
+  "dependencies": {
+    "@solana/program-client-core": "8.5.0",
+    "@solana-program/system": "0.15.0",
+    "@solana-program/token": "0.17.0",
+    "@solana-program/token-2022": "0.19.0",
+    "@solana/kit": "8.5.0",
+    "@solana/react": "8.5.0",
+    "@wallet-standard/react": "1.0.3",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "react-router-dom": "7.18.4"
+  },
+  "devDependencies": {
+    "@codama/nodes-from-anchor": "1.5.6",
+    "@codama/renderers-js": "2.6.0",
+    "@types/react": "18.3.31",
+    "@types/react-dom": "18.3.7",
+    "@vitejs/plugin-react": "5.2.0",
+    "codama": "1.11.0",
+    "typescript": "5.9.3",
+    "vite": "7.3.6"
+  }
+}

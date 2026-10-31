@@ -1,0 +1,65 @@
+/* Katūbayá — generated from tokens.json */
+:root, [data-theme="light"] {
+  --surface: #f0ede3;
+  --surface-raised: #faf8f2;
+  --surface-sunken: #e5e1d3;
+  --line: #cfc9b7;
+  --line-strong: #857c66;
+  --ink: #1e2316;
+  --ink-muted: #5a5d4c;
+  --canopy: #2d5a28;
+  --canopy-soft: #d9e9cc;
+  --on-canopy: #ffffff;
+  --river: #1d5d70;
+  --river-soft: #d1e6ec;
+  --amber: #7a5200;
+  --amber-soft: #f3e5c0;
+  --urucum: #a3321c;
+  --urucum-soft: #f5dcd3;
+  --on-urucum: #ffffff;
+  --link: var(--canopy);
+  --focus-ring: #1d5d70;
+  --shadow-floating: 0 8px 24px rgba(30,35,22,0.14), 0 1px 2px rgba(30,35,22,0.08);
+}
+[data-theme="dark"] {
+  --surface: #151810;
+  --surface-raised: #1e2317;
+  --surface-sunken: #0e100a;
+  --line: #353c2a;
+  --line-strong: #717b5d;
+  --ink: #ebe7d9;
+  --ink-muted: #a7a994;
+  --canopy: #8fcb6b;
+  --canopy-soft: #223a1e;
+  --on-canopy: #121a0e;
+  --river: #80c6d8;
+  --river-soft: #0f3139;
+  --amber: #e6b84b;
+  --amber-soft: #3b2a06;
+  --urucum: #f09076;
+  --urucum-soft: #47190f;
+  --on-urucum: #2a0d06;
+  --link: var(--canopy);
+  --focus-ring: #8fcb6b;
+  --shadow-floating: 0 8px 24px rgba(0,0,0,0.55), 0 1px 2px rgba(0,0,0,0.4);
+}
+:root {
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+  --space-9: 96px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 16px;
+  --radius-full: 999px;
+  --control-sm: 32px;
+  --control-md: 40px;
+  --control-lg: 48px;
+  --font-sans: Kanit, "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
