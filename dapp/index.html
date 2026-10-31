@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>katūbayá</title>
+    <meta name="description" content="Farmers sell their harvest directly. A warehouse they trust delivers it. Your money waits in escrow until it arrives." />
+    <link rel="icon" type="image/svg+xml" href="/brand/katubaya-favicon.svg" />
+    <link rel="apple-touch-icon" href="/brand/katubaya-app-icon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap" />
+    <script>
+      // Set the theme before first paint: the saved choice, else the system color scheme.
+      try {
+        var t = localStorage.getItem("katubaya-theme");
+        if (t !== "light" && t !== "dark") t = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        document.documentElement.setAttribute("data-theme", t);
+      } catch (e) {
+        document.documentElement.setAttribute("data-theme", "light");
+      }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

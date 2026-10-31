@@ -1,0 +1,2600 @@
+{
+  "address": "5NzjPYN5PUGNVkTRfh8naDqD7K3hTQbYyZb5YhtCArxV",
+  "metadata": {
+    "name": "farmer_core",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Created with Anchor"
+  },
+  "instructions": [
+    {
+      "name": "init_config",
+      "docs": [
+        "Initializes the program configuration account"
+      ],
+      "discriminator": [
+        23,
+        235,
+        115,
+        232,
+        168,
+        96,
+        1,
+        231
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "admin",
+          "docs": [
+            "The admin authority that will control the program"
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "logistics_wallet",
+          "type": "pubkey"
+        },
+        {
+          "name": "paused",
+          "type": "bool"
+        },
+        {
+          "name": "allowed_mints",
+          "type": {
+            "vec": "pubkey"
+          }
+        }
+      ]
+    },
+    {
+      "name": "create_warehouse",
+      "docs": [
+        "Admin creates a warehouse keyed by an explicit id"
+      ],
+      "discriminator": [
+        134,
+        67,
+        138,
+        84,
+        6,
+        9,
+        131,
+        106
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "warehouse",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  119,
+                  97,
+                  114,
+                  101,
+                  104,
+                  111,
+                  117,
+                  115,
+                  101
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "warehouse_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "warehouse_id",
+          "type": "u64"
+        },
+        {
+          "name": "operator",
+          "type": "pubkey"
+        },
+        {
+          "name": "name",
+          "type": "string"
+        },
+        {
+          "name": "pickup_notes",
+          "type": "string"
+        },
+        {
+          "name": "fee_bps",
+          "type": "u16"
+        },
+        {
+          "name": "deliver_zip_prefixes",
+          "type": {
+            "vec": {
+              "defined": {
+                "name": "ZipPrefix"
+              }
+            }
+          }
+        },
+        {
+          "name": "delivery_fee_rules_uri",
+          "type": {
+            "option": "string"
+          }
+        }
+      ]
+    },
+    {
+      "name": "update_warehouse",
+      "docs": [
+        "Admin patches a warehouse: operator, pickup notes, fee or zip prefixes"
+      ],
+      "discriminator": [
+        110,
+        174,
+        105,
+        107,
+        93,
+        226,
+        185,
+        14
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "warehouse",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  119,
+                  97,
+                  114,
+                  101,
+                  104,
+                  111,
+                  117,
+                  115,
+                  101
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "warehouse_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "admin",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "warehouse_id",
+          "type": "u64"
+        },
+        {
+          "name": "operator",
+          "type": {
+            "option": "pubkey"
+          }
+        },
+        {
+          "name": "pickup_notes",
+          "type": {
+            "option": "string"
+          }
+        },
+        {
+          "name": "fee_bps",
+          "type": {
+            "option": "u16"
+          }
+        },
+        {
+          "name": "deliver_zip_prefixes",
+          "type": {
+            "option": {
+              "vec": {
+                "defined": {
+                  "name": "ZipPrefix"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "register_farmer",
+      "docs": [
+        "Farmer registers and requests a warehouse"
+      ],
+      "discriminator": [
+        63,
+        234,
+        139,
+        94,
+        48,
+        7,
+        57,
+        201
+      ],
+      "accounts": [
+        {
+          "name": "farmer_profile",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  102,
+                  97,
+                  114,
+                  109,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "farmer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "warehouse"
+        },
+        {
+          "name": "farmer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "display_name",
+          "type": "string"
+        },
+        {
+          "name": "public_profile_uri",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "name": "set_farmer_warehouse",
+      "docs": [
+        "Warehouse operator approves the farmer's requested warehouse"
+      ],
+      "discriminator": [
+        145,
+        32,
+        241,
+        231,
+        183,
+        123,
+        71,
+        244
+      ],
+      "accounts": [
+        {
+          "name": "farmer_profile",
+          "writable": true
+        },
+        {
+          "name": "warehouse"
+        },
+        {
+          "name": "operator",
+          "signer": true,
+          "relations": [
+            "warehouse"
+          ]
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "register_customer",
+      "docs": [
+        "Customer registers a profile"
+      ],
+      "discriminator": [
+        211,
+        203,
+        193,
+        164,
+        198,
+        246,
+        27,
+        223
+      ],
+      "accounts": [
+        {
+          "name": "customer_profile",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  117,
+                  115,
+                  116,
+                  111,
+                  109,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "customer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "customer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "public_profile_uri",
+          "type": {
+            "option": "string"
+          }
+        }
+      ]
+    },
+    {
+      "name": "request_customer_confirmation",
+      "docs": [
+        "Customer asks a warehouse to confirm them (address exchanged off-chain)"
+      ],
+      "discriminator": [
+        21,
+        70,
+        224,
+        243,
+        234,
+        222,
+        61,
+        29
+      ],
+      "accounts": [
+        {
+          "name": "warehouse_customer",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  119,
+                  99,
+                  117,
+                  115,
+                  116,
+                  111,
+                  109,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "warehouse"
+              },
+              {
+                "kind": "account",
+                "path": "customer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "warehouse"
+        },
+        {
+          "name": "customer_profile",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  117,
+                  115,
+                  116,
+                  111,
+                  109,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "customer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "customer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "confirm_customer",
+      "docs": [
+        "Warehouse operator confirms a customer; also re-admits a revoked one"
+      ],
+      "discriminator": [
+        235,
+        196,
+        57,
+        230,
+        106,
+        65,
+        27,
+        117
+      ],
+      "accounts": [
+        {
+          "name": "warehouse_customer",
+          "writable": true
+        },
+        {
+          "name": "warehouse",
+          "relations": [
+            "warehouse_customer"
+          ]
+        },
+        {
+          "name": "operator",
+          "signer": true,
+          "relations": [
+            "warehouse"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "notes_hash",
+          "type": {
+            "option": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "revoke_customer",
+      "docs": [
+        "Warehouse operator revokes a pending or confirmed customer"
+      ],
+      "discriminator": [
+        40,
+        65,
+        178,
+        196,
+        136,
+        197,
+        140,
+        161
+      ],
+      "accounts": [
+        {
+          "name": "warehouse_customer",
+          "writable": true
+        },
+        {
+          "name": "warehouse",
+          "relations": [
+            "warehouse_customer"
+          ]
+        },
+        {
+          "name": "operator",
+          "signer": true,
+          "relations": [
+            "warehouse"
+          ]
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "publish_offer",
+      "docs": [
+        "Approved farmer publishes a transparent lot offer keyed by an explicit id"
+      ],
+      "discriminator": [
+        175,
+        252,
+        74,
+        202,
+        147,
+        215,
+        186,
+        210
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "farmer_profile",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  102,
+                  97,
+                  114,
+                  109,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "farmer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "offer",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  102,
+                  102,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "farmer"
+              },
+              {
+                "kind": "arg",
+                "path": "offer_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "mint",
+          "docs": [
+            "The payment mint, an account and not an argument so its token extensions can be read here."
+          ]
+        },
+        {
+          "name": "farmer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "offer_id",
+          "type": "u64"
+        },
+        {
+          "name": "crop_name",
+          "type": "string"
+        },
+        {
+          "name": "cultivar_name",
+          "type": {
+            "option": "string"
+          }
+        },
+        {
+          "name": "unit_code",
+          "type": "u16"
+        },
+        {
+          "name": "qty",
+          "type": "u64"
+        },
+        {
+          "name": "price_minor",
+          "type": "u64"
+        },
+        {
+          "name": "expires_at",
+          "type": {
+            "option": "i64"
+          }
+        },
+        {
+          "name": "notes_public",
+          "type": {
+            "option": "string"
+          }
+        },
+        {
+          "name": "pack_ref",
+          "type": {
+            "option": "pubkey"
+          }
+        }
+      ]
+    },
+    {
+      "name": "deactivate_offer",
+      "docs": [
+        "Farmer stops purchases on an offer"
+      ],
+      "discriminator": [
+        233,
+        95,
+        11,
+        47,
+        132,
+        49,
+        106,
+        67
+      ],
+      "accounts": [
+        {
+          "name": "offer",
+          "writable": true
+        },
+        {
+          "name": "farmer",
+          "signer": true,
+          "relations": [
+            "offer"
+          ]
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "set_paused",
+      "docs": [
+        "Admin pauses or resumes market actions"
+      ],
+      "discriminator": [
+        91,
+        60,
+        125,
+        192,
+        176,
+        225,
+        166,
+        218
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "admin",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "paused",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "create_order",
+      "docs": [
+        "Confirmed customer buys from an offer: reserves stock and escrows the subtotal"
+      ],
+      "discriminator": [
+        141,
+        54,
+        37,
+        207,
+        237,
+        210,
+        250,
+        215
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "offer",
+          "writable": true
+        },
+        {
+          "name": "warehouse",
+          "relations": [
+            "offer"
+          ]
+        },
+        {
+          "name": "warehouse_customer",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  119,
+                  99,
+                  117,
+                  115,
+                  116,
+                  111,
+                  109,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "offer.warehouse",
+                "account": "LotOffer"
+              },
+              {
+                "kind": "account",
+                "path": "customer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "order",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  114,
+                  100,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "offer"
+              },
+              {
+                "kind": "account",
+                "path": "customer"
+              },
+              {
+                "kind": "arg",
+                "path": "order_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "customer_token_account",
+          "writable": true
+        },
+        {
+          "name": "escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "order"
+              }
+            ]
+          }
+        },
+        {
+          "name": "customer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "token_program"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "order_id",
+          "type": "u64"
+        },
+        {
+          "name": "qty",
+          "type": "u64"
+        },
+        {
+          "name": "mode",
+          "type": {
+            "defined": {
+              "name": "FulfillmentMode"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "quote_delivery_fee",
+      "docs": [
+        "Warehouse operator quotes the delivery fee of a pending delivery order"
+      ],
+      "discriminator": [
+        235,
+        140,
+        98,
+        111,
+        181,
+        20,
+        101,
+        146
+      ],
+      "accounts": [
+        {
+          "name": "order",
+          "writable": true
+        },
+        {
+          "name": "warehouse",
+          "relations": [
+            "order"
+          ]
+        },
+        {
+          "name": "operator",
+          "signer": true,
+          "relations": [
+            "warehouse"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "delivery_fee_minor",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "accept_delivery_fee",
+      "docs": [
+        "Customer accepts the quote and escrows the delivery fee"
+      ],
+      "discriminator": [
+        31,
+        21,
+        77,
+        156,
+        115,
+        89,
+        194,
+        45
+      ],
+      "accounts": [
+        {
+          "name": "order",
+          "writable": true
+        },
+        {
+          "name": "mint",
+          "relations": [
+            "order"
+          ]
+        },
+        {
+          "name": "customer_token_account",
+          "writable": true
+        },
+        {
+          "name": "escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "order"
+              }
+            ]
+          }
+        },
+        {
+          "name": "customer",
+          "signer": true,
+          "relations": [
+            "order"
+          ]
+        },
+        {
+          "name": "token_program"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "reject_delivery_fee",
+      "docs": [
+        "Customer rejects the quote: subtotal refunded, stock restored, order canceled"
+      ],
+      "discriminator": [
+        225,
+        186,
+        131,
+        200,
+        168,
+        25,
+        118,
+        197
+      ],
+      "accounts": [
+        {
+          "name": "order",
+          "writable": true
+        },
+        {
+          "name": "offer",
+          "writable": true,
+          "relations": [
+            "order"
+          ]
+        },
+        {
+          "name": "mint",
+          "relations": [
+            "order"
+          ]
+        },
+        {
+          "name": "customer_token_account",
+          "writable": true
+        },
+        {
+          "name": "escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "order"
+              }
+            ]
+          }
+        },
+        {
+          "name": "customer",
+          "docs": [
+            "Also the escrow rent destination, so it must be writable."
+          ],
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "order"
+          ]
+        },
+        {
+          "name": "token_program"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "refuse_delivery",
+      "docs": [
+        "Warehouse operator refuses a delivery order before transit: full refund, stock restored"
+      ],
+      "discriminator": [
+        240,
+        69,
+        202,
+        95,
+        212,
+        219,
+        93,
+        198
+      ],
+      "accounts": [
+        {
+          "name": "order",
+          "writable": true
+        },
+        {
+          "name": "warehouse",
+          "relations": [
+            "order"
+          ]
+        },
+        {
+          "name": "offer",
+          "writable": true,
+          "relations": [
+            "order"
+          ]
+        },
+        {
+          "name": "mint",
+          "relations": [
+            "order"
+          ]
+        },
+        {
+          "name": "customer_token_account",
+          "docs": [
+            "Any token account of the order's customer for this mint; the operator picks it, the owner check keeps the money with the customer."
+          ],
+          "writable": true
+        },
+        {
+          "name": "escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "order"
+              }
+            ]
+          }
+        },
+        {
+          "name": "customer",
+          "docs": [
+            "Escrow rent goes back to the customer, who paid it at `create_order`."
+          ],
+          "writable": true,
+          "relations": [
+            "order"
+          ]
+        },
+        {
+          "name": "operator",
+          "signer": true,
+          "relations": [
+            "warehouse"
+          ]
+        },
+        {
+          "name": "token_program"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "mark_in_transit",
+      "docs": [
+        "Warehouse operator locks the order for transport; mandatory before completion"
+      ],
+      "discriminator": [
+        208,
+        164,
+        6,
+        15,
+        221,
+        55,
+        217,
+        108
+      ],
+      "accounts": [
+        {
+          "name": "order",
+          "writable": true
+        },
+        {
+          "name": "warehouse",
+          "relations": [
+            "order"
+          ]
+        },
+        {
+          "name": "operator",
+          "signer": true,
+          "relations": [
+            "warehouse"
+          ]
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "complete_order",
+      "docs": [
+        "Warehouse operator completes the order: escrow released to farmer and logistics"
+      ],
+      "discriminator": [
+        73,
+        78,
+        89,
+        7,
+        140,
+        132,
+        17,
+        97
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "order",
+          "writable": true
+        },
+        {
+          "name": "warehouse",
+          "relations": [
+            "order"
+          ]
+        },
+        {
+          "name": "mint",
+          "relations": [
+            "order"
+          ]
+        },
+        {
+          "name": "farmer_token_account",
+          "docs": [
+            "Must already exist; the program does not create payout accounts."
+          ],
+          "writable": true
+        },
+        {
+          "name": "logistics_token_account",
+          "writable": true
+        },
+        {
+          "name": "escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "order"
+              }
+            ]
+          }
+        },
+        {
+          "name": "customer",
+          "docs": [
+            "Escrow rent goes back to the customer, who paid it at `create_order`."
+          ],
+          "writable": true,
+          "relations": [
+            "order"
+          ]
+        },
+        {
+          "name": "operator",
+          "signer": true,
+          "relations": [
+            "warehouse"
+          ]
+        },
+        {
+          "name": "token_program"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "expire_order",
+      "docs": [
+        "Anyone expires a pre-transit order past expires_at: full refund, stock restored"
+      ],
+      "discriminator": [
+        174,
+        27,
+        85,
+        247,
+        105,
+        245,
+        220,
+        13
+      ],
+      "accounts": [
+        {
+          "name": "order",
+          "writable": true
+        },
+        {
+          "name": "offer",
+          "writable": true,
+          "relations": [
+            "order"
+          ]
+        },
+        {
+          "name": "mint",
+          "relations": [
+            "order"
+          ]
+        },
+        {
+          "name": "customer_token_account",
+          "docs": [
+            "Any token account of the order's customer for this mint; the owner check keeps the refund with the customer."
+          ],
+          "writable": true
+        },
+        {
+          "name": "escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "order"
+              }
+            ]
+          }
+        },
+        {
+          "name": "customer",
+          "docs": [
+            "Escrow rent goes back to the customer, who paid it at `create_order`."
+          ],
+          "writable": true,
+          "relations": [
+            "order"
+          ]
+        },
+        {
+          "name": "token_program"
+        }
+      ],
+      "args": []
+    }
+  ],
+  "accounts": [
+    {
+      "name": "CustomerProfile",
+      "discriminator": [
+        230,
+        176,
+        48,
+        101,
+        4,
+        236,
+        84,
+        108
+      ]
+    },
+    {
+      "name": "FarmerProfile",
+      "discriminator": [
+        167,
+        109,
+        11,
+        146,
+        241,
+        174,
+        172,
+        255
+      ]
+    },
+    {
+      "name": "LotOffer",
+      "discriminator": [
+        0,
+        47,
+        103,
+        182,
+        82,
+        190,
+        178,
+        211
+      ]
+    },
+    {
+      "name": "Order",
+      "discriminator": [
+        134,
+        173,
+        223,
+        185,
+        77,
+        86,
+        28,
+        51
+      ]
+    },
+    {
+      "name": "ProgramConfig",
+      "discriminator": [
+        196,
+        210,
+        90,
+        231,
+        144,
+        149,
+        140,
+        63
+      ]
+    },
+    {
+      "name": "Warehouse",
+      "discriminator": [
+        162,
+        150,
+        206,
+        71,
+        83,
+        99,
+        222,
+        202
+      ]
+    },
+    {
+      "name": "WarehouseCustomer",
+      "discriminator": [
+        139,
+        117,
+        32,
+        108,
+        93,
+        90,
+        38,
+        165
+      ]
+    }
+  ],
+  "types": [
+    {
+      "name": "CustomerConfirmationRequested",
+      "type": {
+        "fields": [
+          {
+            "name": "warehouse",
+            "type": "pubkey"
+          },
+          {
+            "name": "customer",
+            "type": "pubkey"
+          }
+        ],
+        "kind": "struct"
+      }
+    },
+    {
+      "name": "CustomerConfirmed",
+      "type": {
+        "fields": [
+          {
+            "name": "warehouse",
+            "type": "pubkey"
+          },
+          {
+            "name": "customer",
+            "type": "pubkey"
+          }
+        ],
+        "kind": "struct"
+      }
+    },
+    {
+      "name": "CustomerRevoked",
+      "type": {
+        "fields": [
+          {
+            "name": "warehouse",
+            "type": "pubkey"
+          },
+          {
+            "name": "customer",
+            "type": "pubkey"
+          }
+        ],
+        "kind": "struct"
+      }
+    },
+    {
+      "name": "DeliveryFeeAccepted",
+      "type": {
+        "fields": [
+          {
+            "name": "order",
+            "type": "pubkey"
+          }
+        ],
+        "kind": "struct"
+      }
+    },
+    {
+      "name": "DeliveryFeeQuoted",
+      "type": {
+        "fields": [
+          {
+            "name": "order",
+            "type": "pubkey"
+          },
+          {
+            "name": "delivery_fee_minor",
+            "type": "u64"
+          }
+        ],
+        "kind": "struct"
+      }
+    },
+    {
+      "name": "DeliveryFeeRejected",
+      "type": {
+        "fields": [
+          {
+            "name": "order",
+            "type": "pubkey"
+          }
+        ],
+        "kind": "struct"
+      }
+    },
+    {
+      "name": "OfferDeactivated",
+      "type": {
+        "fields": [
+          {
+            "name": "offer",
+            "type": "pubkey"
+          }
+        ],
+        "kind": "struct"
+      }
+    },
+    {
+      "name": "OfferPublished",
+      "type": {
+        "fields": [
+          {
+            "name": "offer",
+            "type": "pubkey"
+          },
+          {
+            "name": "farmer",
+            "type": "pubkey"
+          },
+          {
+            "name": "warehouse",
+            "type": "pubkey"
+          },
+          {
+            "name": "crop_name",
+            "type": "string"
+          },
+          {
+            "name": "cultivar_name",
+            "type": {
+              "option": "string"
+            }
+          },
+          {
+            "name": "unit_code",
+            "type": "u16"
+          },
+          {
+            "name": "qty",
+            "type": "u64"
+          },
+          {
+            "name": "price_minor",
+            "type": "u64"
+          },
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "expires_at",
+            "type": {
+              "option": "i64"
+            }
+          }
+        ],
+        "kind": "struct"
+      }
+    },
+    {
+      "name": "OrderCompleted",
+      "type": {
+        "fields": [
+          {
+            "name": "order",
+            "type": "pubkey"
+          },
+          {
+            "name": "subtotal_minor",
+            "type": "u64"
+          },
+          {
+            "name": "service_fee_minor",
+            "type": "u64"
+          },
+          {
+            "name": "delivery_fee_minor",
+            "type": "u64"
+          },
+          {
+            "name": "farmer_payout",
+            "type": "u64"
+          },
+          {
+            "name": "logistics_payout",
+            "type": "u64"
+          }
+        ],
+        "kind": "struct"
+      }
+    },
+    {
+      "name": "OrderCreated",
+      "type": {
+        "fields": [
+          {
+            "name": "order",
+            "type": "pubkey"
+          },
+          {
+            "name": "offer",
+            "type": "pubkey"
+          },
+          {
+            "name": "farmer",
+            "type": "pubkey"
+          },
+          {
+            "name": "warehouse",
+            "type": "pubkey"
+          },
+          {
+            "name": "customer",
+            "type": "pubkey"
+          },
+          {
+            "name": "qty",
+            "type": "u64"
+          },
+          {
+            "name": "subtotal_minor",
+            "type": "u64"
+          },
+          {
+            "name": "service_fee_minor",
+            "type": "u64"
+          },
+          {
+            "name": "mode",
+            "type": {
+              "defined": {
+                "name": "FulfillmentMode"
+              }
+            }
+          }
+        ],
+        "kind": "struct"
+      }
+    },
+    {
+      "name": "OrderExpired",
+      "type": {
+        "fields": [
+          {
+            "name": "order",
+            "type": "pubkey"
+          }
+        ],
+        "kind": "struct"
+      }
+    },
+    {
+      "name": "OrderInTransit",
+      "type": {
+        "fields": [
+          {
+            "name": "order",
+            "type": "pubkey"
+          }
+        ],
+        "kind": "struct"
+      }
+    },
+    {
+      "name": "OrderRefused",
+      "type": {
+        "fields": [
+          {
+            "name": "order",
+            "type": "pubkey"
+          }
+        ],
+        "kind": "struct"
+      }
+    },
+    {
+      "name": "CustomerProfile",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "public_profile_uri",
+            "type": {
+              "option": "string"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "FarmerProfile",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "warehouse",
+            "type": "pubkey"
+          },
+          {
+            "name": "warehouse_approved",
+            "type": "bool"
+          },
+          {
+            "name": "display_name",
+            "type": "string"
+          },
+          {
+            "name": "public_profile_uri",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "name": "FulfillmentMode",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Pickup"
+          },
+          {
+            "name": "Delivery"
+          }
+        ]
+      }
+    },
+    {
+      "name": "LotOffer",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "farmer",
+            "type": "pubkey"
+          },
+          {
+            "name": "warehouse",
+            "type": "pubkey"
+          },
+          {
+            "name": "offer_id",
+            "type": "u64"
+          },
+          {
+            "name": "pack_ref",
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "crop_name",
+            "type": "string"
+          },
+          {
+            "name": "cultivar_name",
+            "type": {
+              "option": "string"
+            }
+          },
+          {
+            "name": "unit_code",
+            "type": "u16"
+          },
+          {
+            "name": "expires_at",
+            "type": {
+              "option": "i64"
+            }
+          },
+          {
+            "name": "notes_public",
+            "type": {
+              "option": "string"
+            }
+          },
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "price_minor",
+            "type": "u64"
+          },
+          {
+            "name": "qty_remaining",
+            "type": "u64"
+          },
+          {
+            "name": "active",
+            "type": "bool"
+          },
+          {
+            "name": "created_at",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Order",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "order_id",
+            "type": "u64"
+          },
+          {
+            "name": "offer",
+            "type": "pubkey"
+          },
+          {
+            "name": "farmer",
+            "type": "pubkey"
+          },
+          {
+            "name": "warehouse",
+            "type": "pubkey"
+          },
+          {
+            "name": "customer",
+            "type": "pubkey"
+          },
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "qty",
+            "type": "u64"
+          },
+          {
+            "name": "subtotal_minor",
+            "type": "u64"
+          },
+          {
+            "name": "service_fee_minor",
+            "type": "u64"
+          },
+          {
+            "name": "delivery_fee_minor",
+            "type": "u64"
+          },
+          {
+            "name": "fulfillment_mode",
+            "type": {
+              "defined": {
+                "name": "FulfillmentMode"
+              }
+            }
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": {
+                "name": "OrderStatus"
+              }
+            }
+          },
+          {
+            "name": "created_at",
+            "type": "i64"
+          },
+          {
+            "name": "expires_at",
+            "type": "i64"
+          },
+          {
+            "name": "escrow_bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "OrderStatus",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "EscrowedPickup"
+          },
+          {
+            "name": "PendingDeliveryQuote"
+          },
+          {
+            "name": "DeliveryQuoted"
+          },
+          {
+            "name": "EscrowedReady"
+          },
+          {
+            "name": "InTransit"
+          },
+          {
+            "name": "Fulfilled"
+          },
+          {
+            "name": "Refused"
+          },
+          {
+            "name": "Canceled"
+          },
+          {
+            "name": "Expired"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ProgramConfig",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "logistics_wallet",
+            "type": "pubkey"
+          },
+          {
+            "name": "paused",
+            "type": "bool"
+          },
+          {
+            "name": "allowed_mints",
+            "type": {
+              "vec": "pubkey"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Warehouse",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "warehouse_id",
+            "type": "u64"
+          },
+          {
+            "name": "operator",
+            "type": "pubkey"
+          },
+          {
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "name": "pickup_notes",
+            "type": "string"
+          },
+          {
+            "name": "fee_bps",
+            "type": "u16"
+          },
+          {
+            "name": "delivery_fee_rules_uri",
+            "type": {
+              "option": "string"
+            }
+          },
+          {
+            "name": "deliver_zip_prefixes",
+            "type": {
+              "vec": {
+                "defined": {
+                  "name": "ZipPrefix"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "WarehouseCustomer",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "warehouse",
+            "type": "pubkey"
+          },
+          {
+            "name": "customer",
+            "type": "pubkey"
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": {
+                "name": "WarehouseCustomerStatus"
+              }
+            }
+          },
+          {
+            "name": "confirmed_at",
+            "type": {
+              "option": "i64"
+            }
+          },
+          {
+            "name": "notes_hash",
+            "type": {
+              "option": {
+                "array": [
+                  "u8",
+                  32
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "WarehouseCustomerStatus",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Pending"
+          },
+          {
+            "name": "Confirmed"
+          },
+          {
+            "name": "Revoked"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ZipPrefix",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "prefix",
+            "type": "u32"
+          },
+          {
+            "name": "len",
+            "type": "u8"
+          }
+        ]
+      }
+    }
+  ],
+  "events": [
+    {
+      "discriminator": [
+        64,
+        161,
+        141,
+        244,
+        141,
+        181,
+        13,
+        86
+      ],
+      "name": "CustomerConfirmationRequested"
+    },
+    {
+      "discriminator": [
+        52,
+        250,
+        132,
+        67,
+        24,
+        20,
+        2,
+        65
+      ],
+      "name": "CustomerConfirmed"
+    },
+    {
+      "discriminator": [
+        222,
+        236,
+        64,
+        243,
+        227,
+        147,
+        121,
+        251
+      ],
+      "name": "CustomerRevoked"
+    },
+    {
+      "discriminator": [
+        63,
+        19,
+        246,
+        212,
+        163,
+        31,
+        184,
+        158
+      ],
+      "name": "DeliveryFeeAccepted"
+    },
+    {
+      "discriminator": [
+        249,
+        108,
+        130,
+        122,
+        93,
+        172,
+        119,
+        185
+      ],
+      "name": "DeliveryFeeQuoted"
+    },
+    {
+      "discriminator": [
+        22,
+        46,
+        14,
+        2,
+        163,
+        134,
+        111,
+        13
+      ],
+      "name": "DeliveryFeeRejected"
+    },
+    {
+      "discriminator": [
+        53,
+        194,
+        130,
+        24,
+        152,
+        207,
+        82,
+        31
+      ],
+      "name": "OfferDeactivated"
+    },
+    {
+      "discriminator": [
+        199,
+        154,
+        81,
+        128,
+        178,
+        203,
+        105,
+        82
+      ],
+      "name": "OfferPublished"
+    },
+    {
+      "discriminator": [
+        90,
+        77,
+        52,
+        248,
+        56,
+        233,
+        110,
+        197
+      ],
+      "name": "OrderCompleted"
+    },
+    {
+      "discriminator": [
+        224,
+        1,
+        229,
+        63,
+        254,
+        60,
+        190,
+        159
+      ],
+      "name": "OrderCreated"
+    },
+    {
+      "discriminator": [
+        241,
+        55,
+        48,
+        196,
+        160,
+        51,
+        40,
+        213
+      ],
+      "name": "OrderExpired"
+    },
+    {
+      "discriminator": [
+        138,
+        145,
+        41,
+        120,
+        174,
+        43,
+        36,
+        25
+      ],
+      "name": "OrderInTransit"
+    },
+    {
+      "discriminator": [
+        209,
+        138,
+        35,
+        47,
+        180,
+        228,
+        129,
+        131
+      ],
+      "name": "OrderRefused"
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "TooManyAllowedMints",
+      "msg": "Too many allowed mints provided"
+    },
+    {
+      "code": 6001,
+      "name": "ProgramPaused",
+      "msg": "Program is currently paused"
+    },
+    {
+      "code": 6002,
+      "name": "UnauthorizedAdmin",
+      "msg": "Unauthorized: caller is not the admin"
+    },
+    {
+      "code": 6003,
+      "name": "MintNotAllowed",
+      "msg": "Mint not in allowed list"
+    },
+    {
+      "code": 6004,
+      "name": "NameTooLong",
+      "msg": "Name exceeds MAX_NAME_LEN"
+    },
+    {
+      "code": 6005,
+      "name": "NotesTooLong",
+      "msg": "Notes exceed MAX_NOTES_LEN"
+    },
+    {
+      "code": 6006,
+      "name": "UriTooLong",
+      "msg": "URI exceeds MAX_URI_LEN"
+    },
+    {
+      "code": 6007,
+      "name": "TooManyZipPrefixes",
+      "msg": "Too many zip prefixes"
+    },
+    {
+      "code": 6008,
+      "name": "InvalidZipPrefixLen",
+      "msg": "Zip prefix len must be 3, 4 or 5"
+    },
+    {
+      "code": 6009,
+      "name": "FeeBpsTooHigh",
+      "msg": "fee_bps exceeds 10000"
+    },
+    {
+      "code": 6010,
+      "name": "UnauthorizedOperator",
+      "msg": "Signer is not the warehouse operator"
+    },
+    {
+      "code": 6011,
+      "name": "WarehouseMismatch",
+      "msg": "Farmer did not request this warehouse"
+    },
+    {
+      "code": 6012,
+      "name": "CustomerNotFound",
+      "msg": "Customer not found"
+    },
+    {
+      "code": 6013,
+      "name": "AlreadyConfirmed",
+      "msg": "Customer is already confirmed for this warehouse"
+    },
+    {
+      "code": 6014,
+      "name": "AlreadyRevoked",
+      "msg": "Customer is already revoked for this warehouse"
+    },
+    {
+      "code": 6015,
+      "name": "FarmerNotApproved",
+      "msg": "Farmer is not approved by the warehouse"
+    },
+    {
+      "code": 6016,
+      "name": "UnauthorizedFarmer",
+      "msg": "Signer is not the offer's farmer"
+    },
+    {
+      "code": 6017,
+      "name": "InvalidQuantity",
+      "msg": "Quantity must be greater than zero"
+    },
+    {
+      "code": 6018,
+      "name": "InvalidPrice",
+      "msg": "Price must be greater than zero"
+    },
+    {
+      "code": 6019,
+      "name": "InvalidExpiry",
+      "msg": "expires_at must be in the future"
+    },
+    {
+      "code": 6020,
+      "name": "OfferInactive",
+      "msg": "Offer is not active"
+    },
+    {
+      "code": 6021,
+      "name": "CustomerNotConfirmed",
+      "msg": "Customer is not confirmed by the warehouse"
+    },
+    {
+      "code": 6022,
+      "name": "OfferExpired",
+      "msg": "Offer has expired"
+    },
+    {
+      "code": 6023,
+      "name": "InsufficientStock",
+      "msg": "Not enough stock remaining"
+    },
+    {
+      "code": 6024,
+      "name": "MathOverflow",
+      "msg": "Arithmetic overflow"
+    },
+    {
+      "code": 6025,
+      "name": "MintMismatch",
+      "msg": "Mint does not match the offer"
+    },
+    {
+      "code": 6026,
+      "name": "OfferMismatch",
+      "msg": "Offer does not match the order"
+    },
+    {
+      "code": 6027,
+      "name": "UnauthorizedCustomer",
+      "msg": "Signer or token account is not the order's customer"
+    },
+    {
+      "code": 6028,
+      "name": "InvalidOrderStatus",
+      "msg": "Order status does not allow this action"
+    },
+    {
+      "code": 6029,
+      "name": "NotDeliveryOrder",
+      "msg": "Order is not a delivery order"
+    },
+    {
+      "code": 6030,
+      "name": "FarmerTokenAccountMismatch",
+      "msg": "Farmer token account is not owned by the order's farmer"
+    },
+    {
+      "code": 6031,
+      "name": "LogisticsTokenAccountMismatch",
+      "msg": "Logistics token account is not owned by config.logistics_wallet"
+    },
+    {
+      "code": 6032,
+      "name": "OrderNotExpired",
+      "msg": "Order has not reached expires_at yet"
+    },
+    {
+      "code": 6033,
+      "name": "MintExtensionNotAllowed",
+      "msg": "Mint carries a token extension this program cannot escrow safely"
+    }
+  ]
+}
