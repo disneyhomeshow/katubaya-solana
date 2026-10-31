@@ -15,6 +15,8 @@ import { FarmerOffers } from "./pages/farmer/Offers";
 import { FarmerPublish } from "./pages/farmer/Publish";
 import { FarmerManageOffer } from "./pages/farmer/ManageOffer";
 import { FarmerSales } from "./pages/farmer/Sales";
+import { WarehouseYard } from "./pages/warehouse/Yard";
+import { ProgramMap } from "./pages/admin/ProgramMap";
 import { useSession } from "./state/session";
 
 /** "/" opens the screen that matches what the connected wallet holds. */
@@ -28,6 +30,9 @@ function Home() {
       </Layout>
     );
   }
+  // A program that was never set up has nothing to show anyone but the wallet that sets it up.
+  if (profile.isAdmin || !profile.config) return <Navigate to="/admin" replace />;
+  if (profile.operated.length) return <Navigate to="/warehouse" replace />;
   if (profile.farmer) return <Navigate to="/farmer" replace />;
   if (profile.confirmed.length) return <Navigate to="/market" replace />;
   if (profile.pending.length) return <Navigate to="/customer/pending" replace />;
@@ -53,6 +58,9 @@ export function App() {
       <Route path="/farmer/publish" element={<FarmerPublish />} />
       <Route path="/farmer/offers/:offer" element={<FarmerManageOffer />} />
       <Route path="/farmer/sales" element={<FarmerSales />} />
+      <Route path="/warehouse" element={<WarehouseYard />} />
+      <Route path="/warehouse/:warehouse" element={<WarehouseYard />} />
+      <Route path="/admin" element={<ProgramMap />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

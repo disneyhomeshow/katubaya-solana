@@ -485,9 +485,9 @@ On any cancellation/refusal/expiry before completion, restore stock.
    - pickup: immediate escrow → wait warehouse transit/completion
    - delivery: escrow subtotal → wait quote → accept/reject → wait transit/completion
 
-The farmer and customer flows (with onboarding) are implemented in `dapp/`, a React app on a
-Codama-generated `@solana/kit` client; see `dapp/README.md`. The warehouse and admin screens are not
-built yet.
+All four roles are implemented in `dapp/`, a React app on a Codama-generated `@solana/kit` client:
+farmer and customer screens (with onboarding), the warehouse operator's yard and the admin's program
+map, both played as isometric maps; see `dapp/README.md`.
 
 ---
 

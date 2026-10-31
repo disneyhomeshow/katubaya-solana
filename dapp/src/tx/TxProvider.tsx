@@ -23,13 +23,20 @@ export type TxRequest = {
   /** Runs when the person closes the confirmed dialog: move on to the next screen. */
   onDone?: (signature: Signature) => void;
   doneLabel?: string;
+  /** The wallet prompt was declined: nothing was sent. */
+  onRejected?: () => void;
+  /** Stopped by a preflight check, the simulation or the chain. */
+  onFailed?: (failure: Failure) => void;
+  /** The warehouse and admin games: the dialog stays light and pops in over the map. */
+  game?: boolean;
 };
 
-type TxState = "sign" | "sending" | "confirmed" | "failed" | "rejected";
+export type TxState = "sign" | "sending" | "confirmed" | "failed" | "rejected";
 
 type Running = { request: TxRequest; state: TxState; signature?: Signature; failure?: Failure };
 
 const TxContext = createContext<((request: TxRequest) => void) | null>(null);
+const TxStateContext = createContext<TxState | null>(null);
 
 export function TxProvider({ children }: { children: ReactNode }) {
   const { signer } = useWallet();
@@ -50,6 +57,7 @@ export function TxProvider({ children }: { children: ReactNode }) {
         const blocked = await request.preflight?.();
         if (blocked) {
           update({ state: "failed", failure: blocked });
+          request.onFailed?.(blocked);
           return;
         }
         const instructions = await request.build(signer);
@@ -59,9 +67,14 @@ export function TxProvider({ children }: { children: ReactNode }) {
         update({ state: "confirmed", signature });
         await request.onConfirmed?.(signature);
       } catch (error) {
-        if (error instanceof TxRejected) update({ state: "rejected" });
-        else if (error instanceof TxFailure) update({ state: "failed", failure: error.failure });
-        else update({ state: "failed", failure: describeFailure(error, [], []) });
+        if (error instanceof TxRejected) {
+          update({ state: "rejected" });
+          request.onRejected?.();
+          return;
+        }
+        const failure = error instanceof TxFailure ? error.failure : describeFailure(error, [], []);
+        update({ state: "failed", failure });
+        request.onFailed?.(failure);
       }
     },
     [signer],
@@ -78,8 +91,10 @@ export function TxProvider({ children }: { children: ReactNode }) {
 
   return (
     <TxContext.Provider value={run}>
-      {children}
-      {running ? <TxDialog running={running} onClose={close} onRetry={() => run(running.request)} /> : null}
+      <TxStateContext.Provider value={running?.state ?? null}>
+        {children}
+        {running ? <TxDialog running={running} onClose={close} onRetry={() => run(running.request)} /> : null}
+      </TxStateContext.Provider>
     </TxContext.Provider>
   );
 }
@@ -141,7 +156,12 @@ function TxDialog({ running, onClose, onRetry }: { running: Running; onClose: ()
   }
 
   return (
-    <div className="kb-scrim" ref={ref} onClick={(e) => e.target === e.currentTarget && state !== "sending" && onClose()}>
+    <div
+      className={request.game ? "kb-scrim game-scrim" : "kb-scrim"}
+      data-theme={request.game ? "light" : undefined}
+      ref={ref}
+      onClick={(e) => e.target === e.currentTarget && state !== "sending" && onClose()}
+    >
       <Transaction
         title={request.title}
         instruction={request.instruction}
@@ -158,6 +178,11 @@ function TxDialog({ running, onClose, onRetry }: { running: Running; onClose: ()
       </Transaction>
     </div>
   );
+}
+
+/** The state of the transaction dialog, or null when none is open. */
+export function useTxState(): TxState | null {
+  return useContext(TxStateContext);
 }
 
 export function useTx(): (request: TxRequest) => void {

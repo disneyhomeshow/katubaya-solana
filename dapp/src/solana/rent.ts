@@ -9,6 +9,7 @@ export const SIZE = {
   farmerProfile: 8 + 32 + 32 + 1 + (4 + 100) + (4 + 200),
   lotOffer: 8 + 32 + 32 + 8 + 33 + (4 + 100) + (1 + 4 + 100) + 2 + 9 + (1 + 4 + 500) + 32 + 8 + 8 + 1 + 8,
   order: getOrderSize(),
+  warehouse: 8 + 8 + 32 + (4 + 100) + (4 + 500) + 2 + (1 + 4 + 200) + (4 + 100 * 5),
   /** SPL Token account; Token-2022 adds the ImmutableOwner extension. */
   tokenAccount: 165,
   tokenAccount2022: 170,
