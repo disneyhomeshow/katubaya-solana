@@ -3,13 +3,17 @@ import type { Address } from "@solana/kit";
 import { TOKEN_PROGRAM_ADDRESS } from "@solana-program/token";
 import { TOKEN_2022_PROGRAM_ADDRESS } from "@solana-program/token-2022";
 import {
+  FARMER_CORE_ERROR__ALREADY_CONFIRMED,
+  FARMER_CORE_ERROR__ALREADY_REVOKED,
   FARMER_CORE_ERROR__CUSTOMER_NOT_CONFIRMED,
   FARMER_CORE_ERROR__FARMER_NOT_APPROVED,
+  FARMER_CORE_ERROR__FEE_BPS_TOO_HIGH,
   FARMER_CORE_ERROR__INSUFFICIENT_STOCK,
   FARMER_CORE_ERROR__INVALID_EXPIRY,
   FARMER_CORE_ERROR__INVALID_ORDER_STATUS,
   FARMER_CORE_ERROR__INVALID_PRICE,
   FARMER_CORE_ERROR__INVALID_QUANTITY,
+  FARMER_CORE_ERROR__INVALID_ZIP_PREFIX_LEN,
   FARMER_CORE_ERROR__MINT_EXTENSION_NOT_ALLOWED,
   FARMER_CORE_ERROR__MINT_NOT_ALLOWED,
   FARMER_CORE_ERROR__NAME_TOO_LONG,
@@ -18,6 +22,10 @@ import {
   FARMER_CORE_ERROR__OFFER_INACTIVE,
   FARMER_CORE_ERROR__ORDER_NOT_EXPIRED,
   FARMER_CORE_ERROR__PROGRAM_PAUSED,
+  FARMER_CORE_ERROR__TOO_MANY_ALLOWED_MINTS,
+  FARMER_CORE_ERROR__TOO_MANY_ZIP_PREFIXES,
+  FARMER_CORE_ERROR__UNAUTHORIZED_ADMIN,
+  FARMER_CORE_ERROR__UNAUTHORIZED_OPERATOR,
   FARMER_CORE_ERROR__URI_TOO_LONG,
   FARMER_CORE_PROGRAM_ADDRESS,
   getFarmerCoreErrorMessage,
@@ -73,6 +81,23 @@ const PROGRAM_ERRORS: Partial<Record<FarmerCoreError, Failure>> = {
     title: "Not past its deadline yet",
     message: "The order can be closed as expired once its deadline passes.",
   },
+  [FARMER_CORE_ERROR__UNAUTHORIZED_OPERATOR]: {
+    title: "This wallet doesn't run the warehouse",
+    message: "Only the warehouse's operator wallet can do this. The admin may have handed it to another wallet.",
+  },
+  [FARMER_CORE_ERROR__UNAUTHORIZED_ADMIN]: {
+    title: "This wallet doesn't hold the program key",
+    message: "Only the program admin can do this. Connect the admin wallet and try again.",
+  },
+  [FARMER_CORE_ERROR__ALREADY_CONFIRMED]: { title: "Already confirmed", message: "This customer is already in. Reload to see the gate as it is." },
+  [FARMER_CORE_ERROR__ALREADY_REVOKED]: { title: "Already turned away", message: "This request was already closed. Reload to see the gate as it is." },
+  [FARMER_CORE_ERROR__FEE_BPS_TOO_HIGH]: { title: "The fee is too high", message: "A service fee can be at most 100%." },
+  [FARMER_CORE_ERROR__INVALID_ZIP_PREFIX_LEN]: {
+    title: "Check the CEP prefixes",
+    message: "Each prefix has 3 to 5 digits, like 119 or 11950.",
+  },
+  [FARMER_CORE_ERROR__TOO_MANY_ZIP_PREFIXES]: { title: "Too many CEP prefixes", message: "A warehouse can list up to 100 prefixes." },
+  [FARMER_CORE_ERROR__TOO_MANY_ALLOWED_MINTS]: { title: "Too many mints", message: "The program accepts up to 30 mints." },
 };
 
 const GENERIC: Failure = {

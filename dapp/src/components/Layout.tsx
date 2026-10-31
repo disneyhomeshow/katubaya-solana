@@ -3,6 +3,7 @@ import { Link, NavLink } from "react-router-dom";
 import { useDisconnect, type UiWallet } from "@wallet-standard/react";
 import { Address, Badge, Button, Icon } from "../design-system";
 import { CLUSTER, CLUSTER_LABEL } from "../config";
+import { useSession } from "../state/session";
 import { useTheme } from "../state/theme";
 import { useWallet } from "../wallet/WalletProvider";
 
@@ -94,7 +95,13 @@ function WalletArea({ area }: { area: Area }) {
 
 export function Layout({ area, children }: { area: Area; children: ReactNode }) {
   const { account } = useWallet();
-  const nav = area === "onboarding" || account ? NAV[area] : NAV.onboarding;
+  const { profile } = useSession();
+  // The admin and warehouse operators also play the map and the yard; their way back is in the header.
+  const games: NavItem[] = [
+    ...(profile?.isAdmin ? [{ to: "/admin", label: "Program map", icon: "leaf" as const }] : []),
+    ...(profile?.operated.length ? [{ to: "/warehouse", label: "Warehouse yard", icon: "package" as const }] : []),
+  ];
+  const nav = [...(area === "onboarding" || account ? NAV[area] : NAV.onboarding), ...games];
   return (
     <div className="app">
       <header className="app-header">

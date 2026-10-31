@@ -1,0 +1,225 @@
+/* The warehouse yard and the program map: the two playable dashboards of the gamification design
+   ("Katūbayá gamificado", Round 2). Ported from the design's own stylesheet, scoped under .kb-game.
+   The scenery colors (#dde3d3, #e3e7dc, the plate greens) are the renders' own ground, not tokens. */
+
+.kb-game { min-height: 100vh; background: #e3e7dc; color: var(--ink); font-family: var(--font-sans); font-size: 16px; line-height: 24px; }
+.kb-game .game { display: flex; flex-direction: column; gap: 12px; height: 100vh; min-height: 680px; padding: 14px 18px 18px; box-sizing: border-box; }
+.kb-game .game-body { flex: 1; min-height: 0; display: flex; gap: 12px; }
+
+/* ---- HUD */
+.kb-game .hud { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; padding: 10px 12px 10px 18px; background: var(--surface-raised); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow-floating); }
+.kb-game .hud-logo { display: block; }
+.kb-game .hud-logo img { height: 30px; width: auto; display: block; }
+.kb-game .hud-chip { display: flex; align-items: center; gap: 10px; padding: 6px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.kb-game .hud-chip select { font: inherit; font-weight: 500; color: var(--ink); background: transparent; border: 0; padding: 0; cursor: pointer; }
+.kb-game .hud-money { display: flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 10px; flex-wrap: wrap; }
+.kb-game .hud-money-held { background: var(--river-soft); }
+.kb-game .hud-money-held > span:first-child { font-size: 14px; color: var(--river); }
+.kb-game .hud-money-out { background: var(--canopy-soft); }
+.kb-game .hud-money-out > span:first-child { font-size: 14px; color: var(--canopy); }
+.kb-game .hud-end { margin-left: auto; display: flex; align-items: center; gap: 12px; position: relative; }
+.kb-game .hud-me { display: flex; align-items: center; gap: 12px; padding: 2px; border: 0; background: none; font: inherit; color: inherit; cursor: pointer; border-radius: 999px; text-align: right; }
+.kb-game .hud-me-text { display: flex; flex-direction: column; align-items: flex-end; }
+.kb-game .hud-me-name { font-weight: 500; font-size: 15px; line-height: 20px; }
+.kb-game .hud-me-state { font-size: 13px; line-height: 18px; color: var(--canopy); transition: color 300ms; }
+.kb-game .hud-me-state.signing { color: var(--river); }
+.kb-game .ring { flex: none; width: 44px; height: 44px; border-radius: 999px; overflow: hidden; background: var(--canopy-soft); transition: box-shadow 300ms; box-shadow: 0 0 0 3px var(--surface-raised), 0 0 0 5px var(--canopy); }
+.kb-game .ring.admin { background: var(--river-soft); }
+.kb-game .ring.signing { box-shadow: 0 0 0 3px var(--surface-raised), 0 0 0 5px var(--river); }
+.kb-game .ring img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 18%; display: block; }
+.kb-game .hud-menu { position: absolute; right: 0; top: calc(100% + 10px); z-index: 2200; min-width: 260px; display: flex; flex-direction: column; gap: 4px; padding: 12px; background: var(--surface-raised); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow-floating); animation: fx-rise 180ms ease-out; }
+.kb-game .hud-menu a, .kb-game .hud-menu button.menu-item { display: block; padding: 8px 10px; border-radius: 8px; color: var(--ink); text-decoration: none; font: inherit; text-align: left; background: none; border: 0; cursor: pointer; }
+.kb-game .hud-menu a:hover, .kb-game .hud-menu button.menu-item:hover { background: var(--surface-sunken); }
+.kb-game .hud-menu hr { border: 0; border-top: 1px solid var(--line); margin: 6px 0; width: 100%; }
+
+/* ---- Side panels */
+.kb-game .side-l { width: 300px; flex: none; max-height: 100%; overflow: auto; box-sizing: border-box; display: flex; flex-direction: column; gap: 10px; padding: 16px; background: var(--surface-raised); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow-floating); animation: fx-rise 220ms ease-out; }
+.kb-game .side-r { width: 360px; flex: none; max-height: 100%; overflow: auto; box-sizing: border-box; padding: 20px; background: var(--surface-raised); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow-floating); animation: fx-rise 220ms ease-out; }
+.kb-game .panel { display: flex; flex-direction: column; gap: 14px; animation: fx-rise 260ms ease-out; }
+.kb-game .panel-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.kb-game .h-side { margin: 0; font-size: 20px; line-height: 26px; font-weight: 500; }
+.kb-game .h-panel { margin: 0; font-size: 24px; line-height: 30px; font-weight: 500; }
+.kb-game .h-sub { margin: 6px 0 0; font-size: 16px; line-height: 24px; font-weight: 500; }
+.kb-game .h-market { margin: 0; font-size: 18px; line-height: 24px; font-weight: 500; }
+.kb-game .muted { color: var(--ink-muted); }
+.kb-game .small { font-size: 14px; line-height: 20px; }
+.kb-game .note { font-size: 13px; line-height: 18px; color: var(--ink-muted); }
+.kb-game p { margin: 0; }
+.kb-game .facts { margin: 0; display: flex; flex-direction: column; gap: 8px; padding: 16px; background: var(--surface); border-radius: 10px; }
+.kb-game .facts.tight { padding: 14px; }
+.kb-game .facts > div { display: flex; justify-content: space-between; gap: 12px; align-items: center; }
+.kb-game .facts dt { color: var(--ink-muted); }
+.kb-game .facts dt.strong { color: var(--ink); }
+.kb-game .facts dd { margin: 0; text-align: right; }
+.kb-game .facts dd.mono { font-family: var(--font-mono); font-size: 14px; }
+.kb-game .facts dd.small { font-size: 14px; }
+.kb-game .facts > div.sum { padding-top: 8px; border-top: 1px solid var(--line); }
+.kb-game .row-list { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); }
+.kb-game .row-list.tight { padding: 8px 0; }
+.kb-game .row-list > span:first-child { display: flex; flex-direction: column; min-width: 0; }
+.kb-game .row-list b { font-weight: 500; }
+.kb-game .actions { display: flex; gap: 12px; flex-wrap: wrap; }
+.kb-game .check { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
+.kb-game .check input { width: 18px; height: 18px; margin: 3px 0 0; accent-color: var(--canopy); flex: none; }
+.kb-game .market { display: flex; flex-direction: column; gap: 8px; padding-top: 12px; border-top: 1px solid var(--line); }
+.kb-game .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.kb-game .log { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.kb-game .log li { display: flex; gap: 10px; font-size: 14px; line-height: 20px; animation: fx-rise 260ms ease-out; }
+.kb-game .log li > span:first-child { flex: none; font-family: var(--font-mono); font-size: 13px; color: var(--ink-muted); }
+.kb-game .order-head { display: flex; gap: 12px; align-items: center; }
+.kb-game .order-head img { width: 64px; height: auto; flex: none; }
+.kb-game .order-head > div { display: flex; flex-direction: column; min-width: 0; }
+
+/* ---- Quests and flashes */
+.kb-game .quest { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); font: inherit; color: var(--ink); text-align: left; cursor: pointer; animation: fx-rise 260ms ease-out; transition: background-color 150ms; box-sizing: border-box; }
+.kb-game .quest:hover { background: var(--surface-sunken); }
+.kb-game .quest > span:last-child { display: flex; flex-direction: column; min-width: 0; }
+.kb-game .quest b { font-weight: 500; }
+.kb-game .flash { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; background: var(--canopy-soft); color: var(--canopy); font-weight: 500; animation: fx-done 2.6s ease forwards; }
+.kb-game .dot { width: 8px; height: 8px; border-radius: 99px; flex: none; }
+.kb-game .dot-ask { background: var(--amber); animation: fx-pulse 1.6s ease-in-out infinite; }
+.kb-game .dot-wait { background: var(--line-strong); }
+.kb-game .dot-go { background: var(--canopy); }
+.kb-game .dot-held { background: var(--river); }
+.kb-game .dot-stop { background: var(--urucum); }
+.kb-game .dot-build { background: var(--amber); animation: fx-pulse 1s ease-in-out infinite; }
+.kb-game .dot-free { background: transparent; border: 2px dashed var(--ink-muted); box-sizing: border-box; }
+
+/* ---- Viewport and stage */
+.kb-game .viewport { position: relative; flex: 1; min-width: 0; overflow: hidden; border: 1px solid var(--line); border-radius: 16px; background: #dde3d3; cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; }
+.kb-game .viewport.dragging { cursor: grabbing; }
+.kb-game .stage { position: absolute; transform-origin: 0 0; transition: transform 260ms ease, left 260ms ease, top 260ms ease; }
+.kb-game-admin .stage { transition: transform 500ms ease, left 500ms ease, top 500ms ease, width 500ms ease, height 500ms ease; }
+.kb-game .stage.nodrag { transition: none; }
+.kb-game .vp-broto { position: absolute; left: 40px; bottom: 12px; z-index: 30; display: flex; align-items: flex-end; gap: 6px; max-width: min(440px, 60%); pointer-events: none; }
+.kb-game .vp-broto img { width: 84px; height: auto; flex: none; }
+.kb-game .vp-broto > div { margin-bottom: 16px; padding: 12px 16px; background: var(--surface-raised); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow-floating); display: flex; flex-direction: column; gap: 2px; animation: fx-rise 260ms ease-out; pointer-events: auto; }
+.kb-game .vp-broto b { font-weight: 500; font-size: 14px; line-height: 20px; }
+.kb-game .vp-broto > div > span { font-size: 15px; line-height: 22px; }
+.kb-game .vp-zoom { position: absolute; right: 40px; bottom: 12px; z-index: 30; display: flex; align-items: center; gap: 4px; padding: 6px; background: var(--surface-raised); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow-floating); }
+.kb-game .vp-zoom > span { min-width: 48px; text-align: center; font-family: var(--font-mono); font-size: 13px; }
+.kb-game .vp-hint { position: absolute; right: 40px; top: 12px; z-index: 30; font-size: 13px; line-height: 18px; color: var(--ink-muted); background: var(--surface-raised); padding: 4px 10px; border-radius: 8px; border: 1px solid var(--line); }
+.kb-game .vp-tab { position: absolute; top: 50%; transform: translateY(-50%); z-index: 30; min-width: 28px; height: 72px; padding: 0 4px; border: 1px solid var(--line); background: var(--surface-raised); box-shadow: var(--shadow-floating); font: inherit; font-size: 14px; line-height: 18px; font-weight: 500; color: var(--ink); cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
+.kb-game .vp-tab:hover { background: var(--surface-sunken); }
+.kb-game .vp-tab > span + span { font-size: 12px; color: var(--ink-muted); }
+.kb-game .vp-tab-l { left: 0; border-left: 0; border-radius: 0 10px 10px 0; }
+.kb-game .vp-tab-r { right: 0; border-right: 0; border-radius: 10px 0 0 10px; }
+.kb-game .toast { position: absolute; left: 50%; top: 12px; transform: translateX(-50%); display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-radius: 12px; background: var(--ink); color: var(--surface); box-shadow: var(--shadow-floating); white-space: nowrap; z-index: 2100; font-size: 15px; animation: fx-toast 3s ease forwards; pointer-events: none; }
+.kb-game .vp-empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 40; padding: 24px; }
+.kb-game .vp-empty > div { max-width: 420px; display: flex; flex-direction: column; gap: 12px; padding: 20px; background: var(--surface-raised); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow-floating); }
+
+/* ---- Pieces on the board */
+.kb-game .unit { position: absolute; padding: 0; border: 0; background: none; cursor: pointer; transition: left 900ms ease-in-out, top 900ms ease-in-out, opacity 700ms ease, filter 200ms; }
+.kb-game-admin .unit { transform-origin: 50% 85%; transition: left 600ms ease-in-out, top 600ms ease-in-out, opacity 600ms ease, filter 200ms; }
+.kb-game .unit img { display: block; width: 100%; height: auto; pointer-events: none; }
+.kb-game .unit:hover { filter: brightness(1.05) drop-shadow(0 0 6px rgba(45, 90, 40, 0.55)); }
+.kb-game-admin .unit:hover { filter: brightness(1.05) drop-shadow(0 0 6px rgba(29, 93, 112, 0.55)); }
+.kb-game .unit.deco { pointer-events: none; cursor: default; }
+.kb-game .unit.gone { opacity: 0; pointer-events: none; }
+.kb-game .pin { position: absolute; transform: translate(-50%, -100%) scale(var(--ps, 1)); transform-origin: 50% 100%; display: flex; align-items: center; gap: 6px; padding: 4px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-raised); box-shadow: var(--shadow-floating); font: inherit; font-size: 13px; line-height: 18px; color: var(--ink); white-space: nowrap; cursor: pointer; z-index: 2000; transition: left 900ms ease-in-out, top 900ms ease-in-out, opacity 300ms; }
+.kb-game-admin .pin { transition: left 600ms ease-in-out, top 600ms ease-in-out, opacity 300ms; }
+.kb-game .pin b { font-weight: 500; }
+.kb-game .pin .pin-note { color: var(--ink-muted); }
+.kb-game .pin.gone { opacity: 0; pointer-events: none; }
+.kb-game :is(.unit, .pin, .quest, .plotbtn, .vp-tab, .hud-me):focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.kb-game .bay { transition: fill 500ms ease, stroke 500ms ease, fill-opacity 500ms ease; }
+.kb-game .bounce { animation: fx-bounce 700ms ease; }
+
+/* the forklift: idle wobble, driving rumble, a lift on pick and drop, beacon and exhaust */
+.kb-game .fork { transition-property: left, top, opacity, filter; transition-timing-function: linear; }
+.kb-game .fork img { animation: fk-idle 240ms ease-in-out infinite alternate; }
+.kb-game .fork.moving img { animation: fk-drive 160ms ease-in-out infinite alternate; }
+.kb-game .fork.lift img { animation: fk-lift 520ms cubic-bezier(0.3, 0.7, 0.3, 1); }
+.kb-game .fork::after { content: ""; position: absolute; left: var(--bx); top: var(--by); width: 7px; height: 7px; margin: -3px 0 0 -3px; border-radius: 99px; background: #ffb43a; box-shadow: 0 0 6px 3px rgba(255, 170, 40, 0.65); animation: fk-beacon 900ms steps(1) infinite; pointer-events: none; }
+.kb-game .fork::before { content: ""; position: absolute; left: var(--ex); top: var(--ey); width: 9px; height: 9px; border-radius: 99px; background: rgba(120, 118, 108, 0.45); animation: fk-puff 1.3s ease-out infinite; pointer-events: none; }
+.kb-game .fork.moving::before { animation-duration: 0.8s; }
+.kb-game .dip-a img { animation: dip-a 520ms ease; }
+.kb-game .dip-b img { animation: dip-b 520ms ease; }
+.kb-game .cargo { position: absolute; pointer-events: none; opacity: 0; }
+.kb-game .cargo-a { animation: cargo-a 620ms cubic-bezier(0.35, 0.1, 0.4, 1) forwards; }
+.kb-game .cargo-b { animation: cargo-b 620ms cubic-bezier(0.35, 0.1, 0.4, 1) forwards; }
+.kb-game .puff { position: absolute; width: 44px; height: 22px; margin: -11px 0 0 -22px; border-radius: 50%; border: 3px solid rgba(250, 248, 242, 0.95); pointer-events: none; opacity: 0; }
+.kb-game .puff-a { animation: puff-a 600ms ease-out 480ms; }
+.kb-game .puff-b { animation: puff-b 600ms ease-out 480ms; }
+.kb-game .load-chip { position: absolute; transform: translate(-50%, -100%) scale(var(--ps, 1)); transform-origin: 50% 100%; display: flex; align-items: center; gap: 6px; padding: 3px 9px; border-radius: 999px; background: var(--ink); color: var(--surface); font-size: 12px; line-height: 18px; white-space: nowrap; z-index: 2050; pointer-events: none; animation: fx-fade 250ms ease; }
+.kb-game .load-chip i { display: block; width: 9px; height: 9px; border-radius: 2px; border: 1.5px solid var(--amber); box-sizing: border-box; transition: background-color 250ms; }
+.kb-game .load-chip i.on { background: var(--amber); }
+
+/* the program map: trucks, trees, plots, roads being surveyed and paved */
+.kb-game .truck { position: absolute; pointer-events: none; transition: left 450ms linear, top 450ms linear, opacity 700ms ease; }
+.kb-game .truck img { display: block; width: 100%; height: auto; animation: truck-rumble 300ms ease-in-out infinite alternate; }
+.kb-game .truck.turning img { animation: truck-turn 450ms ease-in-out; }
+.kb-game .truck.parked img { animation: none; }
+.kb-game .tree { position: absolute; pointer-events: none; transition: left 600ms ease-in-out, top 600ms ease-in-out, opacity 700ms ease; }
+.kb-game .plotbtn { position: absolute; transform: translate(-50%, -50%) scale(var(--ps, 1)); width: 30px; height: 30px; padding: 0; border: 2px dashed var(--canopy); border-radius: 999px; background: rgba(250, 248, 242, 0.85); color: var(--canopy); font: inherit; font-size: 20px; line-height: 1; font-weight: 500; cursor: pointer; z-index: 1900; display: flex; align-items: center; justify-content: center; animation: fx-pop 400ms ease; transition: left 600ms ease-in-out, top 600ms ease-in-out, background-color 150ms; }
+.kb-game .plotbtn:hover, .kb-game .plotbtn.on { background: var(--canopy); color: var(--on-canopy); border-style: solid; }
+.kb-game .built-pop { animation: build-pop 800ms cubic-bezier(0.2, 0.9, 0.25, 1.25); }
+.kb-game .road-draw { animation: road-draw 1.6s ease-in-out forwards; }
+.kb-game .survey { animation: fx-fade 400ms ease; }
+.kb-game .ground { transition: transform 600ms ease-in-out; }
+.kb-game .plate { animation: fx-fade 500ms ease; }
+.kb-game .paused-veil { position: absolute; inset: -400px; background: rgba(30, 35, 22, 0.16); z-index: 1500; pointer-events: none; animation: fx-fade 400ms ease; }
+.kb-game .admin-walker { position: absolute; width: 44px; pointer-events: none; transition: left 600ms ease-in-out, top 600ms ease-in-out; }
+.kb-game .steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.kb-game .steps li { display: flex; align-items: center; gap: 10px; }
+.kb-game .step-node { width: 24px; height: 24px; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 13px; box-sizing: border-box; flex: none; transition: background-color 300ms, border-color 300ms, color 300ms; background: var(--surface-sunken); color: var(--ink-muted); border: 1px solid var(--line); }
+.kb-game .step-node.done { background: var(--canopy); color: var(--on-canopy); border-color: var(--canopy); }
+.kb-game .step-node.cur { background: var(--amber-soft); color: var(--amber); border-color: var(--amber); }
+.kb-game .steps .cur-label { font-weight: 500; }
+.kb-game .steps .todo-label { color: var(--ink-muted); }
+
+/* ---- The transaction dialog over a game */
+.game-scrim { z-index: 1000; animation: fx-fade 180ms ease; }
+.game-scrim .kb-tx { animation: fx-pop-tx 240ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+.game-scrim .kb-tx .kb-step-node { transition: background-color 300ms, border-color 300ms, color 300ms; }
+.game-scrim .kb-tx .kb-step-track { transition: background-color 400ms; }
+.game-scrim .kb-tx-confirmed .kb-step:last-child .kb-step-node { animation: fx-pop-tx 320ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+
+@keyframes fx-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes fx-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fx-pop-tx { 0% { opacity: 0; transform: scale(0.94); } 100% { opacity: 1; transform: none; } }
+@keyframes fx-pop { 0% { opacity: 0; transform: translate(-50%, -50%) scale(0.6); } 100% { opacity: 1; } }
+@keyframes fx-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(215, 154, 43, 0.55); } 50% { box-shadow: 0 0 0 5px rgba(215, 154, 43, 0); } }
+@keyframes fx-done { 0% { opacity: 0; transform: translateX(-8px); } 12% { opacity: 1; transform: none; } 80% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes fx-toast { 0% { opacity: 0; transform: translate(-50%, -10px); } 10% { opacity: 1; transform: translate(-50%, 0); } 85% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -6px); } }
+@keyframes fx-bounce { 0% { transform: none; } 30% { transform: translateY(-10px); } 60% { transform: none; } 80% { transform: translateY(-3px); } 100% { transform: none; } }
+@keyframes fk-idle { from { transform: translateY(0); } to { transform: translateY(-0.7px); } }
+@keyframes fk-drive { from { transform: translateY(0) rotate(-0.4deg); } to { transform: translateY(-1.3px) rotate(0.4deg); } }
+@keyframes fk-lift { 0% { transform: none; } 35% { transform: translateY(-4px); } 70% { transform: translateY(1px); } 100% { transform: none; } }
+@keyframes fk-beacon { 0% { opacity: 1; } 50% { opacity: 0.15; } }
+@keyframes fk-puff { 0% { opacity: 0; transform: translate(0, 0) scale(0.4); } 20% { opacity: 0.8; } 100% { opacity: 0; transform: translate(-6px, -22px) scale(1.8); } }
+/* a and b are the same animation under two names, so flipping the class restarts it */
+@keyframes dip-a { 0% { transform: none; } 30% { transform: translateY(3px) scaleY(0.975); } 60% { transform: translateY(-1px); } 100% { transform: none; } }
+@keyframes dip-b { 0% { transform: none; } 30% { transform: translateY(3px) scaleY(0.975); } 60% { transform: translateY(-1px); } 100% { transform: none; } }
+@keyframes cargo-a { 0% { opacity: 0; transform: translate(0, 0) scale(0.95); } 12% { opacity: 1; } 55% { transform: translate(calc(var(--dx) * 0.55), calc(var(--dy) * 0.55 - 30px)) scale(1.05); } 85% { opacity: 1; } 100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(0.6); } }
+@keyframes cargo-b { 0% { opacity: 0; transform: translate(0, 0) scale(0.95); } 12% { opacity: 1; } 55% { transform: translate(calc(var(--dx) * 0.55), calc(var(--dy) * 0.55 - 30px)) scale(1.05); } 85% { opacity: 1; } 100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(0.6); } }
+@keyframes puff-a { 0% { opacity: 0.9; transform: scale(0.3); } 100% { opacity: 0; transform: scale(1.6); } }
+@keyframes puff-b { 0% { opacity: 0.9; transform: scale(0.3); } 100% { opacity: 0; transform: scale(1.6); } }
+@keyframes truck-rumble { from { transform: translateY(0); } to { transform: translateY(-0.6px); } }
+@keyframes truck-turn { 0% { transform: none; } 50% { transform: translateY(-1px) scale(1.03, 0.98); } 100% { transform: none; } }
+@keyframes build-pop { 0% { opacity: 0; transform: translateY(24px) scale(0.55); } 60% { opacity: 1; } 100% { opacity: 1; transform: none; } }
+@keyframes road-draw { to { stroke-dashoffset: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .kb-game *, .kb-game *::before, .kb-game *::after, .game-scrim, .game-scrim * { animation: none !important; transition: none !important; }
+}
+
+@media (max-width: 1100px) {
+  .kb-game .game { height: auto; min-height: 0; }
+  .kb-game .game-body { flex-direction: column; }
+  .kb-game .side-l, .kb-game .side-r { width: auto; max-height: none; }
+  .kb-game .viewport { flex: none; height: 560px; }
+  .kb-game .vp-tab { display: none; }
+}
+@media (max-width: 640px) {
+  .kb-game .game { padding: 10px; }
+  .kb-game .viewport { height: 460px; }
+  .kb-game .vp-broto { left: 12px; max-width: calc(100% - 24px); bottom: 64px; }
+  .kb-game .vp-broto img { width: 44px; }
+  .kb-game .vp-broto > div { padding: 8px 12px; margin-bottom: 8px; }
+  .kb-game .vp-broto > div > span { font-size: 13px; line-height: 18px; }
+  .kb-game .vp-zoom { right: 12px; }
+  .kb-game .vp-hint { display: none; }
+  .kb-game .hud-end { margin-left: 0; width: 100%; justify-content: space-between; }
+  .kb-game .toast { white-space: normal; width: max-content; max-width: calc(100% - 24px); }
+}

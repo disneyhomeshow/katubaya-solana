@@ -1,4 +1,5 @@
-// What the connected wallet is on Katūbayá: farmer, customer (and which warehouses confirmed it), or new.
+// What the connected wallet is on Katūbayá: program admin, warehouse operator, farmer, customer (and which
+// warehouses confirmed it), or new.
 import { createContext, useContext, useEffect, useMemo, type ReactNode } from "react";
 import type { Address } from "@solana/kit";
 import {
@@ -15,6 +16,7 @@ import {
   fetchFarmerProfile,
   fetchWarehouses,
   listCustomerLinks,
+  listWarehousesByOperator,
   type Account,
 } from "../solana/accounts";
 import { useWallet } from "../wallet/WalletProvider";
@@ -24,6 +26,10 @@ export type WarehouseLink = { link: Account<WarehouseCustomer>; warehouse: Accou
 
 export type Profile = {
   config: Account<ProgramConfig> | null;
+  /** The wallet holds the program key (`config.admin`). */
+  isAdmin: boolean;
+  /** Warehouses this wallet operates, A–Z. */
+  operated: Account<Warehouse>[];
   farmer: Account<FarmerProfile> | null;
   farmerWarehouse: Account<Warehouse> | null;
   customer: Account<CustomerProfile> | null;
@@ -42,11 +48,12 @@ export type Session = {
 };
 
 async function loadProfile(wallet: Address | undefined): Promise<Profile> {
-  const [config, farmer, customer, links] = await Promise.all([
+  const [config, farmer, customer, links, operated] = await Promise.all([
     fetchConfig(),
     wallet ? fetchFarmerProfile(wallet) : null,
     wallet ? fetchCustomerProfile(wallet) : null,
     wallet ? listCustomerLinks(wallet) : [],
+    wallet ? listWarehousesByOperator(wallet) : [],
   ]);
   const warehouses = await fetchWarehouses([
     ...links.map((l) => l.data.warehouse),
@@ -58,6 +65,8 @@ async function loadProfile(wallet: Address | undefined): Promise<Profile> {
   const by = (s: WarehouseCustomerStatus) => withWarehouse.filter((l) => l.link.data.status === s);
   return {
     config,
+    isAdmin: !!wallet && !!config && config.data.admin === wallet,
+    operated,
     farmer,
     farmerWarehouse: farmer ? (warehouses.get(farmer.data.warehouse) ?? null) : null,
     customer,

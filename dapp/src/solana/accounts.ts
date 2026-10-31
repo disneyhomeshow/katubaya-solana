@@ -48,12 +48,16 @@ export type { Account };
 
 // Byte offsets of the pubkey fields we filter on (8-byte discriminator first).
 const OFFSET = {
+  warehouseOperator: 16n,
+  warehouseCustomerWarehouse: 8n,
   farmerProfileAuthority: 8n,
+  farmerProfileWarehouse: 40n,
   warehouseCustomerCustomer: 40n,
   lotOfferFarmer: 8n,
   lotOfferWarehouse: 40n,
   orderOffer: 16n,
   orderFarmer: 48n,
+  orderWarehouse: 80n,
   orderCustomer: 112n,
 };
 
@@ -96,6 +100,15 @@ export async function listWarehouses(): Promise<Account<Warehouse>[]> {
   return all.sort((a, b) => a.data.name.localeCompare(b.data.name));
 }
 
+export async function listWarehousesByOperator(operator: Address): Promise<Account<Warehouse>[]> {
+  const all = await programAccounts(WAREHOUSE_DISCRIMINATOR, decodeWarehouse, [memcmp(OFFSET.warehouseOperator, operator)]);
+  return all.sort((a, b) => a.data.name.localeCompare(b.data.name));
+}
+
+export async function fetchWarehouse(address: Address): Promise<Account<Warehouse> | null> {
+  return (await fetchWarehouses([address])).get(address) ?? null;
+}
+
 export async function fetchWarehouses(addresses: Address[]): Promise<Map<string, Account<Warehouse>>> {
   const unique = [...new Set(addresses)];
   if (!unique.length) return new Map();
@@ -132,6 +145,26 @@ export async function listCustomerLinks(customer: Address): Promise<Account<Ware
   return programAccounts(WAREHOUSE_CUSTOMER_DISCRIMINATOR, decodeWarehouseCustomer, [
     memcmp(OFFSET.warehouseCustomerCustomer, customer),
   ]);
+}
+
+/** Every customer request a warehouse received, whatever its status. */
+export async function listCustomerLinksByWarehouse(warehouse: Address): Promise<Account<WarehouseCustomer>[]> {
+  return programAccounts(WAREHOUSE_CUSTOMER_DISCRIMINATOR, decodeWarehouseCustomer, [
+    memcmp(OFFSET.warehouseCustomerWarehouse, warehouse),
+  ]);
+}
+
+export async function listAllCustomerLinks(): Promise<Account<WarehouseCustomer>[]> {
+  return programAccounts(WAREHOUSE_CUSTOMER_DISCRIMINATOR, decodeWarehouseCustomer);
+}
+
+/** Farmers who registered with a warehouse, approved or not. */
+export async function listFarmersByWarehouse(warehouse: Address): Promise<Account<FarmerProfile>[]> {
+  return programAccounts(FARMER_PROFILE_DISCRIMINATOR, decodeFarmerProfile, [memcmp(OFFSET.farmerProfileWarehouse, warehouse)]);
+}
+
+export async function listAllFarmers(): Promise<Account<FarmerProfile>[]> {
+  return programAccounts(FARMER_PROFILE_DISCRIMINATOR, decodeFarmerProfile);
 }
 
 export async function listFarmersByWallet(wallet: Address): Promise<Account<FarmerProfile>[]> {
@@ -172,6 +205,19 @@ export async function listOrdersByCustomer(customer: Address): Promise<Account<O
 
 export async function listOrdersByFarmer(farmer: Address): Promise<Account<Order>[]> {
   return newestFirst(await programAccounts(ORDER_DISCRIMINATOR, decodeOrder, [memcmp(OFFSET.orderFarmer, farmer)]));
+}
+
+export async function listOrdersByWarehouse(warehouse: Address): Promise<Account<Order>[]> {
+  return newestFirst(await programAccounts(ORDER_DISCRIMINATOR, decodeOrder, [memcmp(OFFSET.orderWarehouse, warehouse)]));
+}
+
+export async function listAllOrders(): Promise<Account<Order>[]> {
+  return newestFirst(await programAccounts(ORDER_DISCRIMINATOR, decodeOrder));
+}
+
+/** Whether an account (a token account, usually) exists on chain. */
+export async function accountExists(address: Address): Promise<boolean> {
+  return (await fetchEncodedAccount(rpc, address)).exists;
 }
 
 export async function listOrdersByOffer(offer: Address): Promise<Account<Order>[]> {
